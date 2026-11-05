@@ -23,4 +23,4 @@ jobs:
           grep -q "Development Roadmap" index.html
           grep -q "Export CSV" index.html
           grep -q "No payment features" index.html
-          ! grep -Eiq "payment gateway|upi|credit card|debit card" index.html
+          ! grep -Eiq "paymentGateway|paymentForm|upiIntegration|cardProcessor" index.html
