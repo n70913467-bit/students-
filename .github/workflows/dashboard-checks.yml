@@ -1,0 +1,26 @@
+name: Dashboard basic checks
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify required files
+        run: |
+          test -f index.html
+          test -f README.md
+      - name: Verify dashboard scope and core features
+        run: |
+          grep -q "Project Control Dashboard" index.html
+          grep -q "Development Roadmap" index.html
+          grep -q "Export CSV" index.html
+          grep -q "No payment features" index.html
+          ! grep -Eiq "payment gateway|upi|credit card|debit card" index.html
