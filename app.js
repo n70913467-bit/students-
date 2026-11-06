@@ -121,7 +121,7 @@ function render() {
   $('membersList').innerHTML = selected?.members?.length
     ? selected.members.map((member) => `<div class="task"><div class="body"><b>${esc(member.name)}</b><small>${esc(member.email)} · ${esc(member.member_role)}</small></div></div>`).join('')
     : '<div class="empty">No project members listed.</div>';
-  $('teamPanel').hidden = !isAdmin();
+  $('teamPanel').hidden = !(isAdmin() || selected?.access === 'manager');
   $('userForm').hidden = !isAdmin();
   $('memberForm').hidden = !isAdmin();
   $('memberUserId').innerHTML = users.map((user) => `<option value="${user.id}">${esc(user.name)} · ${esc(user.email)} · ${esc(user.role)}</option>`).join('');
