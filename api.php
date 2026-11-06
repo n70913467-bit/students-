@@ -84,6 +84,10 @@ function db(): PDO {
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_tasks_project_status ON tasks(project_id,status)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_activity_project_created ON activity_logs(project_id,created_at)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_approvals_project_status ON approval_requests(project_id,status)');
+    $pdo->exec("CREATE TABLE IF NOT EXISTS login_attempts (
+        attempt_key TEXT NOT NULL, attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_login_attempts_key_time ON login_attempts(attempt_key,attempted_at)');
     return $pdo;
 }
 function current_user(): ?array {
@@ -99,6 +103,13 @@ function require_user(): array {
 }
 function require_write(array $u): void {
     if ($u['role'] === 'viewer') respond(403, ['error' => 'Viewer role is read-only']);
+}
+function password_algorithm(): string|int {
+    return defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
+}
+function login_attempt_key(string $email): string {
+    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    return hash('sha256', strtolower($email) . '|' . $ip);
 }
 function log_activity(int $projectId, ?int $taskId, int $actorId, string $type, string $message): void {
     $s = db()->prepare('INSERT INTO activity_logs(project_id,task_id,actor_id,event_type,message) VALUES(?,?,?,?,?)');
@@ -122,7 +133,15 @@ function project_write_access(int $projectId, array $u): void {
 }
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-session_set_cookie_params(['httponly'=>true,'secure'=>$secure,'samesite'=>'Strict','path'=>'/']);
+ini_set('session.use_strict_mode', '1');
+ini_set('session.use_only_cookies', '1');
+ini_set('session.gc_maxlifetime', '1800');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: same-origin');
+header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+if ($secure) header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+session_set_cookie_params(['lifetime'=>0,'httponly'=>true,'secure'=>$secure,'samesite'=>'Strict','path'=>'/']);
 session_start();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
