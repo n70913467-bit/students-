@@ -11,7 +11,7 @@ const stages = [
   'Database / Data Model Design', 'Backend API + SQLite Persistence Starter',
   'Frontend Development', 'API Integration', 'Testing & Deployment',
 ];
-const completedStages = 5;
+const completedStages = 7;
 const statusMap = { planned: 'Planned', running: 'Running', on_hold: 'On Hold', stopped: 'Stopped' };
 const statusCode = { Planned: 'planned', Running: 'running', 'On Hold': 'on_hold', Stopped: 'stopped' };
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
