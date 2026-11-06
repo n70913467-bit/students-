@@ -4,6 +4,8 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "test:client": "node --test tests/api-client.test.mjs"
+    "test:client": "node --test tests/api-client.test.mjs",
+    "test:ui": "node --test tests/frontend-contract.test.mjs",
+    "test": "npm run test:client && npm run test:ui"
   }
 }
