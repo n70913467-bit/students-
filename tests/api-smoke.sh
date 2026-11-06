@@ -7,6 +7,11 @@ export PROJECT_DASHBOARD_DB="$TMP_DIR/test.sqlite"
 php -S 127.0.0.1:8787 router.php >"$TMP_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 cleanup() {
+  result=$?
+  if [ "$result" -ne 0 ]; then
+    echo "API smoke test failed; PHP server log follows:"
+    cat "$TMP_DIR/server.log"
+  fi
   kill "$SERVER_PID" 2>/dev/null || true
   rm -rf "$TMP_DIR"
 }
@@ -25,6 +30,7 @@ register="$(curl -fsS -c "$TMP_DIR/cookies" -H 'Content-Type: application/json' 
   "$BASE_URL/api/auth/register")"
 csrf="$(printf '%s' "$register" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["csrf_token"] ?? "";')"
 test -n "$csrf"
+echo "stage: first admin registration"
 
 me="$(curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/auth/me")"
 echo "$me" | grep -q '"role":"admin"'
@@ -34,12 +40,14 @@ project="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-
   "$BASE_URL/api/projects")"
 project_id="$(printf '%s' "$project" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
 test -n "$project_id"
+echo "stage: project creation"
 
 task="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"title":"Smoke Test Task","priority":"high"}' \
   "$BASE_URL/api/projects/$project_id/tasks")"
 task_id="$(printf '%s' "$task" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
 test -n "$task_id"
+echo "stage: task creation"
 
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"message":"Smoke activity entry"}' "$BASE_URL/api/projects/$project_id/activities" | grep -q '"ok":true'
@@ -49,6 +57,7 @@ curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id" | grep -q '
 status="$(curl -sS -o "$TMP_DIR/csrf.json" -w '%{http_code}' -b "$TMP_DIR/cookies" -H 'Content-Type: application/json' \
   -d '{"name":"Should Not Exist","status":"planned"}' "$BASE_URL/api/projects")"
 test "$status" = "419"
+echo "stage: CSRF rejection"
 
 # Admin can create a user and assign that user to a project.
 new_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
@@ -56,6 +65,7 @@ new_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content
   "$BASE_URL/api/users")"
 user_id="$(printf '%s' "$new_user" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
 test -n "$user_id"
+echo "stage: admin user creation"
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d "{\"user_id\":$user_id,\"member_role\":\"viewer\"}" \
   "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
@@ -65,12 +75,14 @@ approval="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content
   "$BASE_URL/api/projects/$project_id/approvals")"
 approval_id="$(printf '%s' "$approval" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
 test -n "$approval_id"
+echo "stage: approval creation"
 curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/approvals" | grep -q 'Smoke approval'
 
 # Logout invalidates the session.
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -X POST "$BASE_URL/api/auth/logout" | grep -q '"ok":true'
 status="$(curl -sS -o "$TMP_DIR/me.json" -w '%{http_code}' -b "$TMP_DIR/cookies" "$BASE_URL/api/auth/me")"
 test "$status" = "401"
+echo "stage: logout"
 
 # Invalid credentials stay generic; repeated failures are throttled.
 bad_status="$(curl -sS -o "$TMP_DIR/bad-login.json" -w '%{http_code}' -H 'Content-Type: application/json' \
