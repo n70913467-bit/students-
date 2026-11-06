@@ -31,6 +31,6 @@ test('project filters are URL encoded', async () => {
   };
   const api = createApiClient('/api');
   await api.listProjects({ status: 'on hold', q: 'Hx Money' });
-  assert.match(requested, /status=on%2Bhold|status=on%20hold/);
+  assert.match(requested, /status=on\+hold/);
   assert.match(requested, /q=Hx\+Money/);
 });
