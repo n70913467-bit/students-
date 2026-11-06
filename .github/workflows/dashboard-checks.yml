@@ -36,3 +36,5 @@ jobs:
         run: php -l api.php
       - name: Run API smoke tests
         run: bash tests/api-smoke.sh
+      - name: Run JavaScript API client tests
+        run: npm run test:client
