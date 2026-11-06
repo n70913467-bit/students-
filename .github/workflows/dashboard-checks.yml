@@ -35,6 +35,9 @@ jobs:
           grep -q "Development Roadmap" index.html
           grep -q "Export CSV" index.html
           grep -q "No payment features" index.html
+          grep -q "RewriteEngine On" .htaccess
+          grep -q "RewriteRule \^storage" .htaccess
+          grep -q "Require all denied" storage/.htaccess
           ! grep -Eiq "paymentGateway|paymentForm|upiIntegration|cardProcessor" index.html
       - name: Set up PHP with SQLite
         uses: shivammathur/setup-php@v2
