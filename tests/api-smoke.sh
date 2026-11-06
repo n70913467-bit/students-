@@ -36,7 +36,7 @@ register="$(curl -fsS -D "$TMP_DIR/register.headers" -c "$TMP_DIR/cookies" -H 'C
   "$BASE_URL/api/auth/register")"
 grep -qi 'HttpOnly' "$TMP_DIR/register.headers"
 grep -qi 'SameSite=Strict' "$TMP_DIR/register.headers"
-stored_hash="$(php -r '$p=new PDO("sqlite:".$argv[1]); echo $p->query("SELECT password_hash FROM users WHERE email=\'admin@example.test\'")->fetchColumn();' "$TMP_DIR/test.sqlite")"
+stored_hash="$(php -r '$p=new PDO("sqlite:".$argv[1]); $s=$p->prepare("SELECT password_hash FROM users WHERE email=?"); $s->execute(["admin@example.test"]); echo $s->fetchColumn();' "$TMP_DIR/test.sqlite")"
 test "$stored_hash" != "correct-horse-battery"
 php -r 'exit(password_verify("correct-horse-battery", $argv[1]) ? 0 : 1);' "$stored_hash"
 repeat_register="$(curl -sS -o "$TMP_DIR/repeat-register.json" -w '%{http_code}' -H 'Content-Type: application/json' \
