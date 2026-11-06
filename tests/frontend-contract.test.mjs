@@ -45,3 +45,9 @@ test('dynamic actions and task controls have contextual accessible names', () =>
   assert.ok(app.includes('aria-label="Delete task: ${esc(task.name)}"'));
   assert.ok(app.includes('aria-label="Approve ${esc(item.title)}"'));
 });
+
+test('project managers can see their assigned project member list without admin-only user controls', () => {
+  assert.match(app, /\$\('teamPanel'\)\.hidden = !\(isAdmin\(\) \|\| selected\?\.access === 'manager'\);/);
+  assert.match(app, /\$\('userForm'\)\.hidden = !isAdmin\(\);/);
+  assert.match(app, /\$\('memberForm'\)\.hidden = !isAdmin\(\);/);
+});
