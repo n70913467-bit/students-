@@ -42,6 +42,7 @@ This is an initial backend implementation, not production-ready. Before public d
 - [Workflow and acceptance criteria](docs/workflow.md)
 - [Secure deployment checklist](docs/deployment.md)
 - [Implemented SQLite data model and API](docs/data-model.md)
+- [Accessibility implementation notes and manual review checklist](docs/accessibility.md)
 
 ## Development status
 - [x] Requirement planning
