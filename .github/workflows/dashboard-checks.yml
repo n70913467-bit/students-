@@ -23,6 +23,7 @@ jobs:
           test -f schema.sql
           test -f tests/api-smoke.sh
           test -f tests/api-client.test.mjs
+          test -f tests/frontend-contract.test.mjs
           test -f .gitignore
       - name: Verify dashboard scope and core features
         run: |
@@ -53,3 +54,5 @@ jobs:
           node --check api-client.js
       - name: Run JavaScript API client tests
         run: npm run test:client
+      - name: Run frontend DOM contract tests
+        run: npm run test:ui
