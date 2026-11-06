@@ -1,0 +1,9 @@
+{
+  "name": "project-control-dashboard",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "test:client": "node --test tests/api-client.test.mjs"
+  }
+}
