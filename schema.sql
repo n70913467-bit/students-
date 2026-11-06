@@ -62,3 +62,9 @@ CREATE INDEX idx_projects_status_updated ON projects(status,updated_at);
 CREATE INDEX idx_tasks_project_status ON tasks(project_id,status);
 CREATE INDEX idx_activity_project_created ON activity_logs(project_id,created_at);
 CREATE INDEX idx_approvals_project_status ON approval_requests(project_id,status);
+
+CREATE TABLE login_attempts (
+  attempt_key TEXT NOT NULL,
+  attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_login_attempts_key_time ON login_attempts(attempt_key, attempted_at);
