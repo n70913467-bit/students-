@@ -18,6 +18,8 @@ jobs:
           test -f index.html
           test -f README.md
           test -f api.php
+          test -f app.js
+          test -f router.php
           test -f schema.sql
           test -f tests/api-smoke.sh
       - name: Verify dashboard scope and core features
@@ -36,5 +38,7 @@ jobs:
         run: php -l api.php
       - name: Run API smoke tests
         run: bash tests/api-smoke.sh
+      - name: Check frontend JavaScript syntax
+        run: node --check app.js
       - name: Run JavaScript API client tests
         run: npm run test:client
