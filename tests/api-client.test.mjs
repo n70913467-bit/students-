@@ -34,3 +34,19 @@ test('project filters are URL encoded', async () => {
   assert.match(requested, /status=on\+hold/);
   assert.match(requested, /q=Hx\+Money/);
 });
+
+test('delete methods use DELETE and same-origin session credentials', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+  const api = createApiClient('/api');
+  await api.deleteProject(12);
+  await api.deleteTask(34);
+  assert.equal(calls[0].options.method, 'DELETE');
+  assert.equal(calls[0].url, '/api/projects/12');
+  assert.equal(calls[1].options.method, 'DELETE');
+  assert.equal(calls[1].url, '/api/tasks/34');
+  assert.equal(calls[0].options.credentials, 'same-origin');
+});
