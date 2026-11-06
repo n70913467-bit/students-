@@ -100,11 +100,11 @@ function render() {
   const writable = canWrite(selected);
   $('addTask').disabled = !writable;
   $('tasks').innerHTML = selected ? (selected.tasks.length
-    ? selected.tasks.map((task) => `<label class="task ${task.done ? 'done' : ''}">
-      <input type="checkbox" data-task="${esc(task.id)}" ${task.done ? 'checked' : ''} ${writable ? '' : 'disabled'}>
+    ? selected.tasks.map((task) => `<div class="task ${task.done ? 'done' : ''}">
+      <input type="checkbox" aria-label="Mark task complete" data-task="${esc(task.id)}" ${task.done ? 'checked' : ''} ${writable ? '' : 'disabled'}>
       <span class="body">${esc(task.name)}<small>Priority: ${esc(task.priority || 'medium')}${task.due ? ' · Due: ' + fmt(task.due) : ''}</small></span>
       ${writable ? `<button class="danger" data-delete-task="${esc(task.id)}" type="button" aria-label="Delete task">×</button>` : ''}
-    </label>`).join('')
+    </div>`).join('')
     : '<div class="empty">Abhi koi task nahi. “Add Task” se shuru karein.</div>')
     : '<div class="empty">Project add karein.</div>';
   $('activityHistory').innerHTML = selected?.activityLog?.length
