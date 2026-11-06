@@ -194,6 +194,35 @@ if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='PATCH') {
     $title=trim((string)($body['title']??$task['title']));if($title==='')respond(422,['error'=>'Task title is required']);
     $s=$pdo->prepare('UPDATE tasks SET title=?,status=?,priority=?,completed_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');$s->execute([$title,$status,$priority,$status==='done'?date('c'):null,$id]);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_updated','Task updated: '.$title.' ('.$status.')');respond(200,['ok'=>true]);
 }
+if ($method==='POST' && $route==='/users') {
+    if ($u['role']!=='admin') respond(403,['error'=>'Only admins can create users']);
+    $name=trim((string)($body['name']??''));$email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');$role=(string)($body['role']??'member');
+    if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12 || !in_array($role,['admin','member','viewer'],true)) respond(422,['error'=>'Name, valid email, 12-character password, and valid role are required']);
+    try{$s=$pdo->prepare('INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,?)');$s->execute([$name,$email,password_hash($password,PASSWORD_DEFAULT),$role]);}
+    catch(Throwable $e){respond(409,['error'=>'Could not create user; email may already exist']);}
+    respond(201,['id'=>(int)$pdo->lastInsertId()]);
+}
+if (preg_match('#^/projects/(\\d+)/members$#',$route,$m) && $method==='POST') {
+    $pid=(int)$m[1];$membership=project_access($pid,$u);
+    if($u['role']!=='admin' && $membership!=='manager') respond(403,['error'=>'Only admins or project managers can add members']);
+    $userId=(int)($body['user_id']??0);$memberRole=(string)($body['member_role']??'contributor');
+    if($userId<1 || !in_array($memberRole,['manager','contributor','viewer'],true)) respond(422,['error'=>'Valid user_id and member_role are required']);
+    $check=$pdo->prepare('SELECT id FROM users WHERE id=? AND is_active=1');$check->execute([$userId]);if(!$check->fetchColumn()) respond(404,['error'=>'Active user not found']);
+    $pdo->prepare('INSERT INTO project_members(project_id,user_id,member_role) VALUES(?,?,?) ON CONFLICT(project_id,user_id) DO UPDATE SET member_role=excluded.member_role')->execute([$pid,$userId,$memberRole]);
+    log_activity($pid,null,(int)$u['id'],'member_added','Project member added or updated');respond(201,['ok'=>true]);
+}
+if (preg_match('#^/projects/(\\d+)/approvals$#',$route,$m) && $method==='GET') {
+    $pid=(int)$m[1];project_access($pid,$u);$s=$pdo->prepare('SELECT * FROM approval_requests WHERE project_id=? ORDER BY requested_at DESC');$s->execute([$pid]);respond(200,['approvals'=>$s->fetchAll()]);
+}
+if (preg_match('#^/projects/(\\d+)$#',$route,$m) && $method==='DELETE') {
+    if($u['role']!=='admin') respond(403,['error'=>'Only admins can delete projects']);
+    $id=(int)$m[1];$s=$pdo->prepare('DELETE FROM projects WHERE id=?');$s->execute([$id]);if(!$s->rowCount())respond(404,['error'=>'Project not found']);respond(200,['ok'=>true]);
+}
+if (preg_match('#^/tasks/(\\d+)$#',$route,$m) && $method==='DELETE') {
+    $id=(int)$m[1];$s=$pdo->prepare('SELECT * FROM tasks WHERE id=?');$s->execute([$id]);$task=$s->fetch();if(!$task)respond(404,['error'=>'Task not found']);
+    project_write_access((int)$task['project_id'],$u);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_deleted','Task deleted: '.$task['title']);
+    $pdo->prepare('DELETE FROM tasks WHERE id=?')->execute([$id]);respond(200,['ok'=>true]);
+}
 if (preg_match('#^/projects/(\d+)/approvals$#',$route,$m) && $method==='POST') {
     $pid=(int)$m[1];project_write_access($pid,$u);$title=trim((string)($body['title']??''));if($title==='')respond(422,['error'=>'Approval title is required']);$s=$pdo->prepare('INSERT INTO approval_requests(project_id,requested_by,approver_id,title,details) VALUES(?,?,?,?,?)');$s->execute([$pid,$u['id'],$body['approver_id']??null,$title,trim((string)($body['details']??''))]);$id=(int)$pdo->lastInsertId();log_activity($pid,null,(int)$u['id'],'approval_requested','Approval requested: '.$title);respond(201,['id'=>$id]);
 }
