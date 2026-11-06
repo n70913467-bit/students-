@@ -4,6 +4,7 @@ set -euo pipefail
 BASE_URL="http://127.0.0.1:8787"
 TMP_DIR="$(mktemp -d)"
 export PROJECT_DASHBOARD_DB="$TMP_DIR/test.sqlite"
+export PROJECT_DASHBOARD_SETUP_KEY="ci-setup-secret"
 php -S 127.0.0.1:8787 router.php >"$TMP_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 cleanup() {
@@ -31,8 +32,11 @@ grep -q 'createApiClient' "$TMP_DIR/app.js"
 storage_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/storage/dashboard.sqlite")"
 test "$storage_status" = "404"
 
+wrong_setup="$(curl -sS -o "$TMP_DIR/wrong-setup.json" -w '%{http_code}' -H 'Content-Type: application/json' \
+  -d '{"name":"Test Admin","email":"admin@example.test","password":"correct-horse-battery","setup_key":"wrong"}' "$BASE_URL/api/auth/register")"
+test "$wrong_setup" = "403"
 register="$(curl -fsS -D "$TMP_DIR/register.headers" -c "$TMP_DIR/cookies" -H 'Content-Type: application/json' \
-  -d '{"name":"Test Admin","email":"admin@example.test","password":"correct-horse-battery"}' \
+  -d '{"name":"Test Admin","email":"admin@example.test","password":"correct-horse-battery","setup_key":"ci-setup-secret"}' \
   "$BASE_URL/api/auth/register")"
 grep -qi 'HttpOnly' "$TMP_DIR/register.headers"
 grep -qi 'SameSite=Strict' "$TMP_DIR/register.headers"
@@ -40,7 +44,7 @@ stored_hash="$(php -r '$p=new PDO("sqlite:".$argv[1]); $s=$p->prepare("SELECT pa
 test "$stored_hash" != "correct-horse-battery"
 php -r 'exit(password_verify("correct-horse-battery", $argv[1]) ? 0 : 1);' "$stored_hash"
 repeat_register="$(curl -sS -o "$TMP_DIR/repeat-register.json" -w '%{http_code}' -H 'Content-Type: application/json' \
-  -d '{"name":"Second Admin","email":"second@example.test","password":"another-long-password"}' "$BASE_URL/api/auth/register")"
+  -d '{"name":"Second Admin","email":"second@example.test","password":"another-long-password","setup_key":"ci-setup-secret"}' "$BASE_URL/api/auth/register")"
 test "$repeat_register" = "403"
 csrf="$(printf '%s' "$register" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["csrf_token"] ?? "";')"
 test -n "$csrf"
