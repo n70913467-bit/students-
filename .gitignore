@@ -1,0 +1,12 @@
+# Local SQLite database and journal files
+/storage/*.sqlite
+/storage/*.sqlite-*
+/storage/*.db
+/storage/*.db-*
+
+# Local secrets and runtime artifacts
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
