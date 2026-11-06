@@ -23,7 +23,10 @@ Open `index.html` in a modern browser. The prototype stores its demo data in bro
 - Configure the web server so `api.php` receives API paths such as `/api/health`, or adjust the routing base for your hosting setup.
 - The first admin is created once using `POST /api/auth/register` with JSON `{ "name": "...", "email": "...", "password": "at-least-12-characters" }`. Registration closes after the first account exists.
 - Login with `POST /api/auth/login`; send the returned `csrf_token` as `X-CSRF-Token` on state-changing requests. Keep the session cookie in the same browser.
-- `GET /api/health` checks API/database initialization. Authenticated routes include `/api/projects`, project detail, tasks, and approvals.
+- `GET /api/health` checks API/database initialization. Authenticated routes include `/api/projects`, project detail, tasks, members, users, and approvals.
+- Project-level viewer memberships are read-only; project write permissions are checked by the API.
+- Run `bash tests/api-smoke.sh` after installing PHP with PDO_SQLite to exercise health, first-admin registration, session lookup, project creation/read, and task creation.
+- GitHub Actions runs PHP syntax validation and the API smoke test on pushes and pull requests.
 - `schema.sql` documents the relational model. The PHP API currently initializes the same core tables itself.
 
 ## Important security/deployment notes
