@@ -79,6 +79,11 @@ function db(): PDO {
         status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','cancelled')),
         requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, decided_at TEXT
     )");
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_projects_status_updated ON projects(status,updated_at)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_members_user_project ON project_members(user_id,project_id)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_tasks_project_status ON tasks(project_id,status)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_activity_project_created ON activity_logs(project_id,created_at)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_approvals_project_status ON approval_requests(project_id,status)');
     return $pdo;
 }
 function current_user(): ?array {
@@ -101,6 +106,9 @@ function log_activity(int $projectId, ?int $taskId, int $actorId, string $type, 
     db()->prepare('UPDATE projects SET updated_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$projectId]);
 }
 function project_access(int $projectId, array $u): string {
+    $exists = db()->prepare('SELECT 1 FROM projects WHERE id=?');
+    $exists->execute([$projectId]);
+    if (!$exists->fetchColumn()) respond(404, ['error' => 'Project not found']);
     if ($u['role'] === 'admin') return 'manager';
     $s = db()->prepare('SELECT member_role FROM project_members WHERE project_id=? AND user_id=?');
     $s->execute([$projectId,$u['id']]);
