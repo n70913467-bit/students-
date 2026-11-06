@@ -29,3 +29,19 @@ test('dynamic dashboard text is escaped before insertion into HTML templates', (
   assert.match(app, /\$\{esc\(item\.title\)\}/);
   assert.match(app, /\$\{esc\(member\.email\)\}/);
 });
+
+
+test('dashboard tables and dialogs expose accessible names and structure', () => {
+  assert.match(html, /<table aria-label="Project tracking">/);
+  assert.match(html, /<caption class="visually-hidden">/);
+  assert.match(html, /<th scope="col">Project<\\/th>/);
+  assert.match(html, /<dialog id="projectDialog" aria-labelledby="projectDialogTitle">/);
+  assert.match(html, /<dialog id="taskDialog" aria-labelledby="taskDialogTitle">/);
+});
+
+test('dynamic actions and task controls have contextual accessible names', () => {
+  assert.match(app, /aria-label="Edit project \\$\\{esc\\(p\\.name\\)\\}"/);
+  assert.match(app, /aria-label="Mark task complete: \\$\\{esc\\(task\\.name\\)\\}"/);
+  assert.match(app, /aria-label="Delete task: \\$\\{esc\\(task\\.name\\)\\}"/);
+  assert.match(app, /aria-label="Approve \\$\\{esc\\(item\\.title\\)\\}"/);
+});
