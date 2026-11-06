@@ -32,6 +32,11 @@ Open `index.html` in a modern browser. The prototype stores its demo data in bro
 ## Important security/deployment notes
 This is an initial backend implementation, not production-ready. Before public deployment: use HTTPS, configure correct URL rewriting, keep the SQLite database outside the public directory, set restrictive file permissions, add rate limiting and audit/backup procedures, review authorization rules, and run functional/security tests. Do not commit real credentials or a live database file.
 
+## API client
+- `api-client.js` provides same-origin browser methods for authentication, projects, tasks, project members, and approvals.
+- The current `index.html` still runs as a localStorage prototype; it has not yet been migrated to the API client.
+- Run `npm run test:client` with Node.js 18+ to run the API client unit tests.
+
 ## Documentation
 - [Workflow and acceptance criteria](docs/workflow.md)
 - [Proposed database model and API outline](docs/data-model.md)
