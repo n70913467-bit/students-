@@ -39,6 +39,7 @@ This is an initial backend implementation, not production-ready. Before public d
 
 ## Documentation
 - [Workflow and acceptance criteria](docs/workflow.md)
+- [Secure deployment checklist](docs/deployment.md)
 - [Proposed database model and API outline](docs/data-model.md)
 
 ## Development status
