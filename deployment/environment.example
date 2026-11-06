@@ -1,0 +1,8 @@
+# Copy these exports into the web server's protected environment.
+# Use a path outside the public document root; create it and grant access only
+# to the PHP/web-server account before starting the application.
+export PROJECT_DASHBOARD_DB="/var/lib/project-control/dashboard.sqlite"
+
+# Generate a long random one-time setup key and set it before first-admin setup.
+# Remove/rotate this environment value after the first admin account is created.
+export PROJECT_DASHBOARD_SETUP_KEY="REPLACE_WITH_A_LONG_RANDOM_SECRET"
