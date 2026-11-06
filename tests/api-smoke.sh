@@ -81,4 +81,4 @@ status="$(curl -sS -o "$TMP_DIR/viewer-write.json" -w '%{http_code}' -b "$TMP_DI
   -d '{"name":"Viewer Must Not Create"}' "$BASE_URL/api.php?route=projects")"
 test "$status" = "403"
 
-echo "API smoke tests passed: health, registration, CSRF, sessions, projects, tasks, users, memberships, approvals, logout, and viewer permissions." health, registration, CSRF, session, projects, tasks, users, memberships, approvals, and logout."
+echo "API smoke tests passed: health, registration, CSRF, sessions, projects, tasks, users, memberships, approvals, logout, and viewer permissions."
