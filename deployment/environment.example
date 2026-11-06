@@ -5,4 +5,4 @@ export PROJECT_DASHBOARD_DB="/var/lib/project-control/dashboard.sqlite"
 
 # Generate a long random one-time setup key and set it before first-admin setup.
 # Remove/rotate this environment value after the first admin account is created.
-export PROJECT_DASHBOARD_SETUP_KEY="REPLACE_WITH_A_LONG_RANDOM_SECRET"
+# Set to 1 when TLS is terminated by a trusted reverse proxy before PHP.\nexport PROJECT_DASHBOARD_COOKIE_SECURE="1"\n\nexport PROJECT_DASHBOARD_SETUP_KEY="REPLACE_WITH_A_LONG_RANDOM_SECRET"
