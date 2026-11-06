@@ -162,7 +162,10 @@ $pdo = db();
 if ($method === 'GET' && $route === '/health') respond(200, ['ok'=>true,'service'=>'project-control-api']);
 if ($method === 'POST' && $route === '/auth/register') {
     $setupKey = getenv('PROJECT_DASHBOARD_SETUP_KEY');
-    if ($setupKey !== false && $setupKey !== '' && !hash_equals($setupKey, (string)($body['setup_key'] ?? ''))) {
+    if ($setupKey === false || $setupKey === '') {
+        respond(503, ['error' => 'First-admin setup is not configured']);
+    }
+    if (!hash_equals($setupKey, (string)($body['setup_key'] ?? ''))) {
         respond(403, ['error' => 'A valid first-admin setup key is required']);
     }
     $name=trim((string)($body['name']??''));$email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');
