@@ -289,6 +289,7 @@ if (preg_match('#^/projects/(\d+)/members$#',$route,$m) && $method==='POST') {
     if($u['role']!=='admin' && $membership!=='manager') respond(403,['error'=>'Only admins or project managers can add members']);
     $userId=(int)($body['user_id']??0);$memberRole=(string)($body['member_role']??'contributor');
     if($userId<1 || !in_array($memberRole,['manager','contributor','viewer'],true)) respond(422,['error'=>'Valid user_id and member_role are required']);
+    if($u['role']!=='admin' && $memberRole==='manager') respond(403,['error'=>'Only admins can assign project manager access']);
     $check=$pdo->prepare('SELECT id FROM users WHERE id=? AND is_active=1');$check->execute([$userId]);if(!$check->fetchColumn()) respond(404,['error'=>'Active user not found']);
     $pdo->prepare('INSERT INTO project_members(project_id,user_id,member_role) VALUES(?,?,?) ON CONFLICT(project_id,user_id) DO UPDATE SET member_role=excluded.member_role')->execute([$pid,$userId,$memberRole]);
     log_activity($pid,null,(int)$u['id'],'member_added','Project member added or updated');respond(201,['ok'=>true]);
