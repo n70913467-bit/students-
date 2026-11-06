@@ -142,6 +142,10 @@ curl -fsS -c "$TMP_DIR/manager-cookies" -H 'Content-Type: application/json' \
 manager_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/manager-login.json")"
 test -n "$manager_csrf"
 curl -fsS -b "$TMP_DIR/manager-cookies" "$BASE_URL/api/projects/$project_id/members" | grep -q 'manager@example.test'
+# Project managers may add contributors/viewers but cannot promote accounts to manager.
+promotion_status="$(curl -sS -o "$TMP_DIR/manager-promotion.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' \
+  -d "{\\"user_id\\":$manager_id,\\"member_role\\":\\"manager\\"}" "$BASE_URL/api/projects/$project_id/members")"
+test "$promotion_status" = "403"
 manager_user_list="$(curl -sS -o "$TMP_DIR/manager-users.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" "$BASE_URL/api/users")"
 test "$manager_user_list" = "403"
 curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' \
