@@ -59,6 +59,7 @@ CREATE TABLE approval_requests (
   decided_at TEXT
 );
 CREATE INDEX idx_projects_status_updated ON projects(status,updated_at);
+CREATE INDEX idx_members_user_project ON project_members(user_id,project_id);
 CREATE INDEX idx_tasks_project_status ON tasks(project_id,status);
 CREATE INDEX idx_activity_project_created ON activity_logs(project_id,created_at);
 CREATE INDEX idx_approvals_project_status ON approval_requests(project_id,status);
