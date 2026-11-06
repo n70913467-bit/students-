@@ -201,6 +201,14 @@ status="$(curl -sS -o "$TMP_DIR/viewer-write.json" -w '%{http_code}' -b "$TMP_DI
   -d '{"name":"Viewer Must Not Create"}' "$BASE_URL/api/projects")"
 test "$status" = "403"
 
+# Deactivating an account must invalidate an already-authenticated session and block new logins.
+php -r '$p=new PDO("sqlite:".$argv[1]); $p->prepare("UPDATE users SET is_active=0 WHERE id=?")->execute([(int)$argv[2]]);' "$TMP_DIR/test.sqlite" "$user_id"
+inactive_session_status="$(curl -sS -o "$TMP_DIR/inactive-session.json" -w '%{http_code}' -b "$TMP_DIR/viewer-cookies" "$BASE_URL/api/auth/me")"
+test "$inactive_session_status" = "401"
+inactive_login_status="$(curl -sS -o "$TMP_DIR/inactive-login.json" -w '%{http_code}' -H 'Content-Type: application/json' \
+  -d '{"email":"viewer@example.test","password":"viewer-password-123"}' "$BASE_URL/api/auth/login")"
+test "$inactive_login_status" = "401"
+
 # Project deletion is tested only after the viewer access check.
 curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$BASE_URL/api/projects/$project_id" | grep -q '"ok":true'
 status="$(curl -sS -o /dev/null -w '%{http_code}' -b "$TMP_DIR/admin-again" "$BASE_URL/api/projects/$project_id")"
