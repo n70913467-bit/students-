@@ -29,9 +29,17 @@ curl -fsS "$BASE_URL/app.js" | grep -q 'createApiClient'
 storage_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/storage/dashboard.sqlite")"
 test "$storage_status" = "404"
 
-register="$(curl -fsS -c "$TMP_DIR/cookies" -H 'Content-Type: application/json' \
+register="$(curl -fsS -D "$TMP_DIR/register.headers" -c "$TMP_DIR/cookies" -H 'Content-Type: application/json' \
   -d '{"name":"Test Admin","email":"admin@example.test","password":"correct-horse-battery"}' \
   "$BASE_URL/api/auth/register")"
+grep -qi 'HttpOnly' "$TMP_DIR/register.headers"
+grep -qi 'SameSite=Strict' "$TMP_DIR/register.headers"
+stored_hash="$(php -r '$p=new PDO("sqlite:".$argv[1]); echo $p->query("SELECT password_hash FROM users WHERE email=\'admin@example.test\'")->fetchColumn();' "$TMP_DIR/test.sqlite")"
+test "$stored_hash" != "correct-horse-battery"
+php -r 'exit(password_verify("correct-horse-battery", $argv[1]) ? 0 : 1);' "$stored_hash"
+repeat_register="$(curl -sS -o "$TMP_DIR/repeat-register.json" -w '%{http_code}' -H 'Content-Type: application/json' \
+  -d '{"name":"Second Admin","email":"second@example.test","password":"another-long-password"}' "$BASE_URL/api/auth/register")"
+test "$repeat_register" = "403"
 csrf="$(printf '%s' "$register" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["csrf_token"] ?? "";')"
 test -n "$csrf"
 echo "stage: first admin registration"
@@ -76,6 +84,9 @@ curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: appli
 curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/users" | grep -q 'viewer@example.test'
 curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/members" | grep -q '"member_role":"viewer"'
 
+invalid_approver="$(curl -sS -o "$TMP_DIR/invalid-approver.json" -w '%{http_code}' -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -d '{"title":"Invalid approver","approver_id":999999}' "$BASE_URL/api/projects/$project_id/approvals")"
+test "$invalid_approver" = "422"
 approval="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"title":"Smoke approval","details":"Check approval list route"}' \
   "$BASE_URL/api/projects/$project_id/approvals")"
@@ -105,6 +116,16 @@ done
 locked_status="$(curl -sS -o "$TMP_DIR/locked.json" -w '%{http_code}' -H 'Content-Type: application/json' \
   -d '{"email":"blocked@example.test","password":"wrong-password"}' "$BASE_URL/api/auth/login")"
 test "$locked_status" = "429"
+
+# Verify task deletion and admin-only project deletion.
+curl -fsS -c "$TMP_DIR/admin-again" -H 'Content-Type: application/json' \
+  -d '{"email":"admin@example.test","password":"correct-horse-battery"}' "$BASE_URL/api/auth/login" >"$TMP_DIR/admin-again.json"
+admin_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/admin-again.json")"
+test -n "$admin_csrf"
+curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$BASE_URL/api/tasks/$task_id" | grep -q '"ok":true'
+curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$BASE_URL/api/projects/$project_id" | grep -q '"ok":true'
+status="$(curl -sS -o /dev/null -w '%{http_code}' -b "$TMP_DIR/admin-again" "$BASE_URL/api/projects/$project_id")"
+test "$status" = "404"
 
 # Viewer can read an assigned project but cannot perform writes.
 curl -fsS -c "$TMP_DIR/viewer-cookies" -H 'Content-Type: application/json' \
