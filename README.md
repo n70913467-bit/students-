@@ -14,13 +14,13 @@ A responsive dashboard for tracking projects, tasks, activity history, approvals
 This project does **not** process, collect, or manage payments. No payment gateway, UPI, card, wallet, banking, merchant, or payment API integration is in scope.
 
 ## Frontend prototype
-Open `index.html` in a modern browser. The prototype stores its demo data in browser localStorage. It is not yet connected to the API.
+Run the authenticated app through PHP (do not open the HTML file directly): `php -S 127.0.0.1:8000 router.php`, then visit `http://127.0.0.1:8000`. The router serves the frontend and same-origin `/api/*` endpoints. The UI now uses the PHP API and SQLite database; the first admin account is created from the setup form.
 
 ## Backend API (development starter)
 - Requires PHP 8.1+ and the PDO_SQLite extension.
 - `api.php` creates the SQLite tables on first request.
 - Set `PROJECT_DASHBOARD_DB` to a database path outside the public web root where possible.
-- Configure the web server so `api.php` receives API paths such as `/api/health`, or adjust the routing base for your hosting setup.
+- For local development, use `php -S 127.0.0.1:8000 router.php`. Apache deployments can use the included `.htaccess`; configure equivalent rewrites for other servers.
 - The first admin is created once using `POST /api/auth/register` with JSON `{ "name": "...", "email": "...", "password": "at-least-12-characters" }`. Registration closes after the first account exists.
 - Login with `POST /api/auth/login`; send the returned `csrf_token` as `X-CSRF-Token` on state-changing requests. Keep the session cookie in the same browser.
 - `GET /api/health` checks API/database initialization. Authenticated routes include `/api/projects`, project detail, tasks, members, users, and approvals.
@@ -33,8 +33,8 @@ Open `index.html` in a modern browser. The prototype stores its demo data in bro
 This is an initial backend implementation, not production-ready. Before public deployment: use HTTPS, configure correct URL rewriting, keep the SQLite database outside the public directory, set restrictive file permissions, add rate limiting and audit/backup procedures, review authorization rules, and run functional/security tests. Do not commit real credentials or a live database file.
 
 ## API client
-- `api-client.js` provides same-origin browser methods for authentication, projects, tasks, project members, and approvals.
-- The current `index.html` still runs as a localStorage prototype; it has not yet been migrated to the API client.
+- `app.js` connects the login/register screen and dashboard CRUD actions to the same-origin API client.
+- `api-client.js` provides same-origin methods for authentication, projects, tasks, activity logs, users, project members, and approvals.
 - Run `npm run test:client` with Node.js 18+ to run the API client unit tests.
 
 ## Documentation
@@ -46,9 +46,9 @@ This is an initial backend implementation, not production-ready. Before public d
 - [x] Workflow planning
 - [x] Initial UI/UX design
 - [x] Proposed relational data model
-- [x] Initial PHP API and SQLite persistence layer (not yet fully tested)
-- [ ] Connect frontend to API and authentication
-- [ ] Complete API integration
+- [x] Initial PHP API and SQLite persistence layer
+- [x] Connect frontend to API and authentication
+- [x] Core project, task, activity, member, and approval API integration
 - [ ] Functional, security, and accessibility testing
 - [ ] Deployment
 
