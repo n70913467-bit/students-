@@ -72,6 +72,19 @@ curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -X POST "$BASE_URL/api/
 status="$(curl -sS -o "$TMP_DIR/me.json" -w '%{http_code}' -b "$TMP_DIR/cookies" "$BASE_URL/api/auth/me")"
 test "$status" = "401"
 
+# Invalid credentials stay generic; repeated failures are throttled.
+bad_status="$(curl -sS -o "$TMP_DIR/bad-login.json" -w '%{http_code}' -H 'Content-Type: application/json' \
+  -d '{"email":"admin@example.test","password":"wrong-password"}' "$BASE_URL/api/auth/login")"
+test "$bad_status" = "401"
+for attempt in $(seq 1 10); do
+  bad_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+    -d '{"email":"blocked@example.test","password":"wrong-password"}' "$BASE_URL/api/auth/login")"
+  test "$bad_status" = "401"
+done
+locked_status="$(curl -sS -o "$TMP_DIR/locked.json" -w '%{http_code}' -H 'Content-Type: application/json' \
+  -d '{"email":"blocked@example.test","password":"wrong-password"}' "$BASE_URL/api/auth/login")"
+test "$locked_status" = "429"
+
 # Viewer can read an assigned project but cannot perform writes.
 curl -fsS -c "$TMP_DIR/viewer-cookies" -H 'Content-Type: application/json' \
   -d '{"email":"viewer@example.test","password":"viewer-password-123"}' \
