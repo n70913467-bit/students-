@@ -52,3 +52,10 @@ The current browser prototype is single-user. Role-based access is a future back
 
 ## Current prototype limitation
 The initial `index.html` prototype stores data in the current browser's localStorage. It is not shared between browsers or users and has no authentication or server API yet.
+
+## Implemented UI workflows
+- First admin creates the initial account once; later users sign in with their email and password.
+- Admin can create user accounts and assign them to projects as manager, contributor, or viewer.
+- Project members can create/update tasks and add dated activity notes according to their access level.
+- Pending approval requests are visible on the project dashboard; an admin or assigned approver can approve or reject them.
+- Viewer accounts can inspect assigned projects but cannot change records.
