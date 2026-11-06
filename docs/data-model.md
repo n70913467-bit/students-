@@ -94,3 +94,11 @@ Keep project records, tasks, activity history, and approval requests separate so
 ## Current versus target
 Current prototype: one browser's localStorage; no shared database, authentication, or API.
 Target: PostgreSQL (or another relational database) behind an authenticated backend API. The schema above is a proposed design, not a deployed database.
+
+## Authentication and session handling
+- Passwords are stored only as hashes; the API uses Argon2id when the PHP runtime supports it and otherwise uses PHP's default password algorithm.
+- The browser receives a session cookie marked HttpOnly and SameSite=Strict (Secure when HTTPS is active). The session cookie contains no password or access token.
+- A random CSRF token is returned after login and is held in frontend memory; state-changing requests send it in the `X-CSRF-Token` header.
+- Failed login attempts are counted by a hash of the email/IP pair and throttled after 10 attempts within 15 minutes. Old attempt records are cleaned during login.
+- PHP session storage is server-side. No JWT or refresh-token flow is used by this implementation.
+- Production still needs independent security review, HTTPS, rate limiting at the edge, session monitoring, and backup/restore testing.
