@@ -31,6 +31,8 @@ curl -fsS "$BASE_URL/app.js" -o "$TMP_DIR/app.js"
 grep -q 'createApiClient' "$TMP_DIR/app.js"
 storage_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/storage/dashboard.sqlite")"
 test "$storage_status" = "404"
+unauth_status="$(curl -sS -o "$TMP_DIR/unauth.json" -w '%{http_code}' "$BASE_URL/api/projects")"
+test "$unauth_status" = "401"
 
 wrong_setup="$(curl -sS -o "$TMP_DIR/wrong-setup.json" -w '%{http_code}' -H 'Content-Type: application/json' \
   -d '{"name":"Test Admin","email":"admin@example.test","password":"correct-horse-battery","setup_key":"wrong"}' "$BASE_URL/api/auth/register")"
@@ -83,10 +85,19 @@ new_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content
   "$BASE_URL/api/users")"
 user_id="$(printf '%s' "$new_user" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
 test -n "$user_id"
-echo "stage: admin user creation"
+viewer_hash="$(php -r '$p=new PDO("sqlite:".$argv[1]); $s=$p->prepare("SELECT password_hash FROM users WHERE email=?"); $s->execute(["viewer@example.test"]); echo $s->fetchColumn();' "$TMP_DIR/test.sqlite")"
+test "$viewer_hash" != "viewer-password-123"
+php -r 'exit(password_verify("viewer-password-123", $argv[1]) ? 0 : 1);' "$viewer_hash"
+echo "stage: admin user creation and password hashing"
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d "{\"user_id\":$user_id,\"member_role\":\"viewer\"}" \
   "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
+manager_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -d '{"name":"Test Manager","email":"manager@example.test","password":"manager-password-123","role":"member"}' "$BASE_URL/api/users")"
+manager_id="$(printf '%s' "$manager_user" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$manager_id"
+curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -d "{\"user_id\":$manager_id,\"member_role\":\"manager\"}" "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
 curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/users" | grep -q 'viewer@example.test'
 curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/members" | grep -q '"member_role":"viewer"'
 
@@ -103,6 +114,19 @@ curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/approvals" |
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -X PATCH -d '{"status":"approved"}' "$BASE_URL/api/approvals/$approval_id" | grep -q '"ok":true'
 curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/approvals" | grep -q '"status":"approved"'
+assigned_approval="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -d "{\"title\":\"Assigned approval\",\"approver_id\":$manager_id}" "$BASE_URL/api/projects/$project_id/approvals")"
+assigned_approval_id="$(printf '%s' "$assigned_approval" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$assigned_approval_id"
+curl -fsS -c "$TMP_DIR/manager-cookies" -H 'Content-Type: application/json' \
+  -d '{"email":"manager@example.test","password":"manager-password-123"}' "$BASE_URL/api/auth/login" >"$TMP_DIR/manager-login.json"
+manager_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/manager-login.json")"
+test -n "$manager_csrf"
+curl -fsS -b "$TMP_DIR/manager-cookies" "$BASE_URL/api/projects/$project_id/members" | grep -q 'manager@example.test'
+manager_user_list="$(curl -sS -o "$TMP_DIR/manager-users.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" "$BASE_URL/api/users")"
+test "$manager_user_list" = "403"
+curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' \
+  -X PATCH -d '{"status":"approved"}' "$BASE_URL/api/approvals/$assigned_approval_id" | grep -q '"ok":true'
 
 # Logout invalidates the session.
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -X POST "$BASE_URL/api/auth/logout" | grep -q '"ok":true'
