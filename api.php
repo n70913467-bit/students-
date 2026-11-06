@@ -276,7 +276,7 @@ if ($method==='POST' && $route==='/users') {
     catch(Throwable $e){respond(409,['error'=>'Could not create user; email may already exist']);}
     respond(201,['id'=>(int)$pdo->lastInsertId()]);
 }
-if (preg_match('#^/projects/(\\d+)/members$#',$route,$m) && $method==='POST') {
+if (preg_match('#^/projects/(\d+)/members$#',$route,$m) && $method==='POST') {
     $pid=(int)$m[1];$membership=project_access($pid,$u);
     if($u['role']!=='admin' && $membership!=='manager') respond(403,['error'=>'Only admins or project managers can add members']);
     $userId=(int)($body['user_id']??0);$memberRole=(string)($body['member_role']??'contributor');
@@ -285,14 +285,14 @@ if (preg_match('#^/projects/(\\d+)/members$#',$route,$m) && $method==='POST') {
     $pdo->prepare('INSERT INTO project_members(project_id,user_id,member_role) VALUES(?,?,?) ON CONFLICT(project_id,user_id) DO UPDATE SET member_role=excluded.member_role')->execute([$pid,$userId,$memberRole]);
     log_activity($pid,null,(int)$u['id'],'member_added','Project member added or updated');respond(201,['ok'=>true]);
 }
-if (preg_match('#^/projects/(\\d+)/approvals$#',$route,$m) && $method==='GET') {
+if (preg_match('#^/projects/(\d+)/approvals$#',$route,$m) && $method==='GET') {
     $pid=(int)$m[1];project_access($pid,$u);$s=$pdo->prepare('SELECT * FROM approval_requests WHERE project_id=? ORDER BY requested_at DESC');$s->execute([$pid]);respond(200,['approvals'=>$s->fetchAll()]);
 }
-if (preg_match('#^/projects/(\\d+)$#',$route,$m) && $method==='DELETE') {
+if (preg_match('#^/projects/(\d+)$#',$route,$m) && $method==='DELETE') {
     if($u['role']!=='admin') respond(403,['error'=>'Only admins can delete projects']);
     $id=(int)$m[1];$s=$pdo->prepare('DELETE FROM projects WHERE id=?');$s->execute([$id]);if(!$s->rowCount())respond(404,['error'=>'Project not found']);respond(200,['ok'=>true]);
 }
-if (preg_match('#^/tasks/(\\d+)$#',$route,$m) && $method==='DELETE') {
+if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='DELETE') {
     $id=(int)$m[1];$s=$pdo->prepare('SELECT * FROM tasks WHERE id=?');$s->execute([$id]);$task=$s->fetch();if(!$task)respond(404,['error'=>'Task not found']);
     project_write_access((int)$task['project_id'],$u);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_deleted','Task deleted: '.$task['title']);
     $pdo->prepare('DELETE FROM tasks WHERE id=?')->execute([$id]);respond(200,['ok'=>true]);
