@@ -1,7 +1,4 @@
-/**
- * Same-origin client for api.php. The existing index.html prototype remains
- * localStorage-backed until its UI is explicitly migrated to this client.
- */
+/** Same-origin API client. Session cookies are HttpOnly; CSRF tokens stay in memory. */
 export function createApiClient(baseUrl = '/api') {
   let csrfToken = null;
   const request = async (route, options = {}) => {
