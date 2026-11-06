@@ -28,7 +28,7 @@ const fmt = (value) => {
 const isAdmin = () => currentUser?.role === 'admin';
 const canWrite = (project) => Boolean(currentUser && currentUser.role !== 'viewer' &&
   (currentUser.role === 'admin' || project?.access !== 'viewer'));
-const canManageMembers = () => isAdmin();
+const canManageMembers = () => isAdmin() || projects.find((project) => project.id === selectedId)?.access === 'manager';
 
 function showAuth(message = '') {
   $('authPanel').hidden = false;
@@ -55,7 +55,7 @@ async function loadProjects() {
     const [detail, approvalResult] = await Promise.all([
       api.getProject(summary.id), api.listApprovals(summary.id),
     ]);
-    const memberResult = isAdmin() ? await api.listProjectMembers(summary.id) : { members: [] };
+    const memberResult = (isAdmin() || detail.access === 'manager') ? await api.listProjectMembers(summary.id) : { members: [] };
     const p = detail.project;
     const activity = detail.activity || [];
     return {
@@ -124,7 +124,7 @@ function render() {
     : '<div class="empty">No project members listed.</div>';
   $('teamPanel').hidden = !canManageMembers();
   $('userForm').hidden = !isAdmin();
-  $('memberForm').hidden = !canManageMembers();
+  $('memberForm').hidden = !isAdmin();
   $('memberUserId').innerHTML = users.map((user) => `<option value="${user.id}">${esc(user.name)} · ${esc(user.email)} · ${esc(user.role)}</option>`).join('');
 
   $('roadmapBar').style.width = `${completedStages / stages.length * 100}%`;
