@@ -4,6 +4,7 @@ const api = createApiClient('/api');
 const $ = (id) => document.getElementById(id);
 let currentUser = null;
 let projects = [];
+let users = [];
 let selectedId = null;
 
 const stages = [
@@ -27,6 +28,7 @@ const fmt = (value) => {
 const isAdmin = () => currentUser?.role === 'admin';
 const canWrite = (project) => Boolean(currentUser && currentUser.role !== 'viewer' &&
   (currentUser.role === 'admin' || project?.access !== 'viewer'));
+const canManageMembers = () => isAdmin();
 
 function showAuth(message = '') {
   $('authPanel').hidden = false;
@@ -53,6 +55,7 @@ async function loadProjects() {
     const [detail, approvalResult] = await Promise.all([
       api.getProject(summary.id), api.listApprovals(summary.id),
     ]);
+    const memberResult = isAdmin() ? await api.listProjectMembers(summary.id) : { members: [] };
     const p = detail.project;
     const activity = detail.activity || [];
     return {
@@ -60,7 +63,7 @@ async function loadProjects() {
       lastActivity: dateOnly(activity[0]?.created_at || p.updated_at),
       activity: activity[0]?.message || '', next: p.next_action || '',
       approval: approvalResult.approvals.filter((item) => item.status === 'pending').map((item) => item.title).join(', ') || 'None',
-      access: detail.access,
+      approvals: approvalResult.approvals, members: memberResult.members, access: detail.access,
       tasks: (detail.tasks || []).map((task) => ({
         id: String(task.id), name: task.title, done: task.status === 'done',
         due: task.due_date, priority: task.priority,
@@ -110,6 +113,19 @@ function render() {
   $('activityHistory').innerHTML = selected?.activityLog?.length
     ? selected.activityLog.map((item) => `<div class="task"><div class="body"><b>${esc(item.message)}</b><small>${fmt(item.date)}</small></div></div>`).join('')
     : '<div class="empty">No activity recorded yet.</div>';
+  $('approvalsList').innerHTML = selected?.approvals?.length ? selected.approvals.map((item) => {
+    const canDecide = canWrite(selected) && item.status === 'pending' &&
+      (isAdmin() || Number(item.approver_id) === Number(currentUser?.id));
+    return `<div class="task"><div class="body"><b>${esc(item.title)}</b><small>Status: ${esc(item.status)}${item.details ? ' · ' + esc(item.details) : ''}</small></div>
+      ${canDecide ? `<button class="secondary" data-approve="${item.id}">Approve</button><button class="danger" data-reject="${item.id}">Reject</button>` : ''}</div>`;
+  }).join('') : '<div class="empty">No approval requests.</div>';
+  $('membersList').innerHTML = selected?.members?.length
+    ? selected.members.map((member) => `<div class="task"><div class="body"><b>${esc(member.name)}</b><small>${esc(member.email)} · ${esc(member.member_role)}</small></div></div>`).join('')
+    : '<div class="empty">No project members listed.</div>';
+  $('teamPanel').hidden = !canManageMembers();
+  $('userForm').hidden = !isAdmin();
+  $('memberForm').hidden = !canManageMembers();
+  $('memberUserId').innerHTML = users.map((user) => `<option value="${user.id}">${esc(user.name)} · ${esc(user.email)} · ${esc(user.role)}</option>`).join('');
 
   $('roadmapBar').style.width = `${completedStages / stages.length * 100}%`;
   $('roadmapProgress').textContent = `${completedStages} / ${stages.length} stages complete`;
@@ -159,7 +175,7 @@ $('registerForm').addEventListener('submit', async (event) => {
   } finally { setBusy(form, false); }
 });
 $('logoutButton').addEventListener('click', async () => {
-  try { await api.logout(); currentUser = null; projects = []; showAuth('Aap logout ho gaye hain.'); }
+  try { await api.logout(); currentUser = null; projects = []; users = []; showAuth('Aap logout ho gaye hain.'); }
   catch (error) { showError(error, 'appStatus'); }
 });
 
@@ -227,6 +243,33 @@ $('tasks').addEventListener('change', async (event) => {
   if (!id) return;
   await refreshAfter(() => api.updateTask(id, { status: event.target.checked ? 'done' : 'todo' }));
 });
+$('userForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  try {
+    await api.createUser({
+      name: $('newUserName').value.trim(), email: $('newUserEmail').value.trim(),
+      password: $('newUserPassword').value, role: $('newUserRole').value,
+    });
+    $('userForm').reset();
+    users = (await api.listUsers()).users;
+    $('teamStatus').textContent = 'User account created.';
+    render();
+  } catch (error) { showError(error, 'teamStatus'); }
+});
+$('memberForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!selectedId) return;
+  await refreshAfter(() => api.addProjectMember(selectedId, {
+    user_id: Number($('memberUserId').value), member_role: $('memberRole').value,
+  }));
+  $('teamStatus').textContent = 'Project membership saved.';
+});
+$('approvalsList').addEventListener('click', async (event) => {
+  const approve = event.target.closest('[data-approve]');
+  const reject = event.target.closest('[data-reject]');
+  const target = approve || reject;
+  if (target) await refreshAfter(() => api.decideApproval(target.dataset.approve || target.dataset.reject, approve ? 'approved' : 'rejected'));
+});
 $('exportCsv').addEventListener('click', () => {
   const rows = [['Project', 'Status', 'Last Activity', 'Activity', 'Next Action', 'Approval Needed'],
     ...projects.map((p) => [p.name, p.status, p.lastActivity, p.activity, p.next, p.approval])];
@@ -241,6 +284,7 @@ async function startSession() {
   currentUser = result.user;
   showDashboard();
   $('appStatus').textContent = '';
+  users = isAdmin() ? (await api.listUsers()).users : [];
   await loadProjects();
 }
 startSession().catch((error) => {
