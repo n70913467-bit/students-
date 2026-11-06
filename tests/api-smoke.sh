@@ -125,10 +125,6 @@ curl -fsS -c "$TMP_DIR/admin-again" -H 'Content-Type: application/json' \
 admin_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/admin-again.json")"
 test -n "$admin_csrf"
 curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$BASE_URL/api/tasks/$task_id" | grep -q '"ok":true'
-curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$BASE_URL/api/projects/$project_id" | grep -q '"ok":true'
-status="$(curl -sS -o /dev/null -w '%{http_code}' -b "$TMP_DIR/admin-again" "$BASE_URL/api/projects/$project_id")"
-test "$status" = "404"
-
 # Viewer can read an assigned project but cannot perform writes.
 curl -fsS -c "$TMP_DIR/viewer-cookies" -H 'Content-Type: application/json' \
   -d '{"email":"viewer@example.test","password":"viewer-password-123"}' \
@@ -140,5 +136,10 @@ status="$(curl -sS -o "$TMP_DIR/viewer-write.json" -w '%{http_code}' -b "$TMP_DI
   -H "X-CSRF-Token: $viewer_csrf" -H 'Content-Type: application/json' \
   -d '{"name":"Viewer Must Not Create"}' "$BASE_URL/api/projects")"
 test "$status" = "403"
+
+# Project deletion is tested only after the viewer access check.
+curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$BASE_URL/api/projects/$project_id" | grep -q '"ok":true'
+status="$(curl -sS -o /dev/null -w '%{http_code}' -b "$TMP_DIR/admin-again" "$BASE_URL/api/projects/$project_id")"
+test "$status" = "404"
 
 echo "API smoke tests passed: health, registration, CSRF, sessions, projects, tasks, users, memberships, approvals, logout, and viewer permissions."
