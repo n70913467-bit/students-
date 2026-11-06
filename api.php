@@ -28,13 +28,14 @@ function db(): PDO {
     if (!extension_loaded('pdo_sqlite')) respond(500, ['error' => 'PDO_SQLite extension is required']);
     $path = getenv('PROJECT_DASHBOARD_DB') ?: __DIR__ . '/storage/dashboard.sqlite';
     $dir = dirname($path);
-    if (!is_dir($dir) && !mkdir($dir, 0770, true) && !is_dir($dir)) {
+    if (!is_dir($dir) && !mkdir($dir, 0700, true) && !is_dir($dir)) {
         respond(500, ['error' => 'Could not create database directory']);
     }
     $pdo = new PDO('sqlite:' . $path, null, null, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
+    if (is_file($path)) @chmod($path, 0600);
     $pdo->exec('PRAGMA foreign_keys = ON');
     $pdo->exec('PRAGMA journal_mode = WAL');
     $pdo->exec("CREATE TABLE IF NOT EXISTS users (
