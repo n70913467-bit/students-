@@ -40,18 +40,19 @@ This is an initial backend implementation, not production-ready. Before public d
 ## Documentation
 - [Workflow and acceptance criteria](docs/workflow.md)
 - [Secure deployment checklist](docs/deployment.md)
-- [Proposed database model and API outline](docs/data-model.md)
+- [Implemented SQLite data model and API](docs/data-model.md)
 
 ## Development status
 - [x] Requirement planning
 - [x] Workflow planning
 - [x] Initial UI/UX design
-- [x] Proposed relational data model
+- [x] Implemented SQLite relational data model
 - [x] Initial PHP API and SQLite persistence layer
 - [x] Connect frontend to API and authentication
 - [x] Core project, task, activity, member, and approval API integration
-- [ ] Functional, security, and accessibility testing
-- [ ] Deployment
+- [x] Automated API, authentication, client, schema, and frontend contract tests
+- [ ] Independent security and accessibility review
+- [ ] Production deployment and live-environment verification
 
 ## Data note
 The initial sample projects are illustrative records based on project discussions, not live integrations or verified activity logs. The dashboard roadmap percentage is a development checklist estimate, not a production-readiness certification.
