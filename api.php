@@ -158,18 +158,35 @@ $pdo = db();
 
 if ($method === 'GET' && $route === '/health') respond(200, ['ok'=>true,'service'=>'project-control-api']);
 if ($method === 'POST' && $route === '/auth/register') {
-    if ((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn() > 0) respond(403, ['error'=>'Registration is closed; ask an admin to create an account']);
-    $name=trim((string)($body['name']??'')); $email=strtolower(trim((string)($body['email']??''))); $password=(string)($body['password']??'');
-    if ($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12) respond(422,['error'=>'First admin requires a name, valid email, and password of at least 12 characters']);
-    $s=$pdo->prepare("INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,'admin')");
-    try{$s->execute([$name,$email,password_hash($password,PASSWORD_DEFAULT)]);}catch(Throwable $e){respond(409,['error'=>'Could not create admin account']);}
-    session_regenerate_id(true); $_SESSION['user_id']=(int)$pdo->lastInsertId(); $_SESSION['csrf']=bin2hex(random_bytes(32));
+    $name=trim((string)($body['name']??''));$email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');
+    if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12) respond(422,['error'=>'First admin requires a name, valid email, and password of at least 12 characters']);
+    $pdo->exec('BEGIN IMMEDIATE');
+    if((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()>0){$pdo->rollBack();respond(403,['error'=>'Registration is closed; ask an admin to create an account']);}
+    try{
+        $s=$pdo->prepare("INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,'admin')");
+        $s->execute([$name,$email,password_hash($password,password_algorithm())]);
+        $newUserId=(int)$pdo->lastInsertId();$pdo->commit();
+    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();respond(409,['error'=>'Could not create admin account']);}
+    session_regenerate_id(true);$_SESSION['user_id']=$newUserId;$_SESSION['csrf']=bin2hex(random_bytes(32));
     respond(201,['user'=>current_user(),'csrf_token'=>$_SESSION['csrf']]);
 }
 if ($method === 'POST' && $route === '/auth/login') {
-    $email=strtolower(trim((string)($body['email']??''))); $password=(string)($body['password']??'');
+    $email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');
+    $attemptKey=login_attempt_key($email);
+    $pdo->prepare("DELETE FROM login_attempts WHERE attempted_at < datetime('now','-1 day')")->execute();
+    $rate=$pdo->prepare("SELECT COUNT(*) FROM login_attempts WHERE attempt_key=? AND attempted_at >= datetime('now','-15 minutes')");
+    $rate->execute([$attemptKey]);
+    if((int)$rate->fetchColumn()>=10)respond(429,['error'=>'Too many login attempts. Try again in 15 minutes']);
     $s=$pdo->prepare('SELECT * FROM users WHERE email=? AND is_active=1');$s->execute([$email]);$u=$s->fetch();
-    if(!$u || !password_verify($password,$u['password_hash'])) respond(401,['error'=>'Email or password is incorrect']);
+    if(!$u || !password_verify($password,$u['password_hash'])){
+        $pdo->prepare('INSERT INTO login_attempts(attempt_key) VALUES(?)')->execute([$attemptKey]);
+        respond(401,['error'=>'Email or password is incorrect']);
+    }
+    $pdo->prepare('DELETE FROM login_attempts WHERE attempt_key=?')->execute([$attemptKey]);
+    if(password_needs_rehash($u['password_hash'],password_algorithm())){
+        $hash=password_hash($password,password_algorithm());
+        $pdo->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([$hash,$u['id']]);
+    }
     session_regenerate_id(true);$_SESSION['user_id']=(int)$u['id'];$_SESSION['csrf']=bin2hex(random_bytes(32));
     respond(200,['user'=>current_user(),'csrf_token'=>$_SESSION['csrf']]);
 }
