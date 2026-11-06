@@ -42,6 +42,13 @@ register="$(curl -fsS -D "$TMP_DIR/register.headers" -c "$TMP_DIR/cookies" -H 'C
   "$BASE_URL/api/auth/register")"
 grep -qi 'HttpOnly' "$TMP_DIR/register.headers"
 grep -qi 'SameSite=Strict' "$TMP_DIR/register.headers"
+# Verify the API sends browser-facing security headers on authenticated responses.
+grep -qi '^X-Content-Type-Options: nosniff' "$TMP_DIR/register.headers"
+grep -qi '^X-Frame-Options: DENY' "$TMP_DIR/register.headers"
+grep -qi '^Referrer-Policy: same-origin' "$TMP_DIR/register.headers"
+grep -qi '^Permissions-Policy:' "$TMP_DIR/register.headers"
+grep -qi '^Content-Security-Policy:' "$TMP_DIR/register.headers"
+grep -qi '^Cache-Control: no-store' "$TMP_DIR/register.headers"
 stored_hash="$(php -r '$p=new PDO("sqlite:".$argv[1]); $s=$p->prepare("SELECT password_hash FROM users WHERE email=?"); $s->execute(["admin@example.test"]); echo $s->fetchColumn();' "$TMP_DIR/test.sqlite")"
 test "$stored_hash" != "correct-horse-battery"
 php -r 'exit(password_verify("correct-horse-battery", $argv[1]) ? 0 : 1);' "$stored_hash"
