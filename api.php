@@ -179,8 +179,13 @@ if ($method==='POST' && $route==='/projects') {
 }
 if (preg_match('#^/projects/(\d+)$#',$route,$m)) {
     $id=(int)$m[1];project_access($id,$u);
-    if($method==='GET'){$s=$pdo->prepare('SELECT * FROM projects WHERE id=?');$s->execute([$id]);$p=$s->fetch();$t=$pdo->prepare('SELECT * FROM tasks WHERE project_id=? ORDER BY created_at DESC');$t->execute([$id]);$a=$pdo->prepare('SELECT * FROM activity_logs WHERE project_id=? ORDER BY created_at DESC LIMIT 100');$a->execute([$id]);respond(200,['project'=>$p,'tasks'=>$t->fetchAll(),'activity'=>$a->fetchAll()]);}
+    if($method==='GET'){$s=$pdo->prepare('SELECT * FROM projects WHERE id=?');$s->execute([$id]);$p=$s->fetch();$t=$pdo->prepare('SELECT * FROM tasks WHERE project_id=? ORDER BY created_at DESC');$t->execute([$id]);$a=$pdo->prepare('SELECT * FROM activity_logs WHERE project_id=? ORDER BY created_at DESC LIMIT 100');$a->execute([$id]);respond(200,['project'=>$p,'tasks'=>$t->fetchAll(),'activity'=>$a->fetchAll(),'access'=>project_access($id,$u)]);}
     if($method==='PATCH'){project_write_access($id,$u);$allowed=['name','description','status','next_action'];$sets=[];$vals=[];foreach($allowed as $k){if(array_key_exists($k,$body)){$sets[]="$k=?";$vals[]=$body[$k];}}if(!$sets)respond(422,['error'=>'No editable fields supplied']);$vals[]=$id;$pdo->prepare('UPDATE projects SET '.implode(',',$sets).',updated_at=CURRENT_TIMESTAMP WHERE id=?')->execute($vals);log_activity($id,null,(int)$u['id'],'project_updated','Project details updated');respond(200,['ok'=>true]);}
+}
+if (preg_match('#^/projects/(\d+)/activities$#',$route,$m) && $method==='POST') {
+    $pid=(int)$m[1];project_write_access($pid,$u);$message=trim((string)($body['message']??''));
+    if($message==='')respond(422,['error'=>'Activity message is required']);
+    log_activity($pid,null,(int)$u['id'],'note_added',$message);respond(201,['ok'=>true]);
 }
 if (preg_match('#^/projects/(\d+)/tasks$#',$route,$m)) {
     $pid=(int)$m[1];project_access($pid,$u);
