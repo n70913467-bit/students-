@@ -105,7 +105,9 @@ function require_write(array $u): void {
     if ($u['role'] === 'viewer') respond(403, ['error' => 'Viewer role is read-only']);
 }
 function password_algorithm(): string|int {
-    return defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
+    return defined('PASSWORD_ARGON2ID') && in_array('argon2id', password_algos(), true)
+        ? PASSWORD_ARGON2ID
+        : PASSWORD_DEFAULT;
 }
 function login_attempt_key(string $email): string {
     $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
