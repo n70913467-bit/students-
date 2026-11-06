@@ -24,6 +24,10 @@ done
 
 health="$(curl -fsS "$BASE_URL/api/health")"
 echo "$health" | grep -q '"ok":true'
+curl -fsS "$BASE_URL/" | grep -q 'First Admin Setup'
+curl -fsS "$BASE_URL/app.js" | grep -q 'createApiClient'
+storage_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/storage/dashboard.sqlite")"
+test "$storage_status" = "404"
 
 register="$(curl -fsS -c "$TMP_DIR/cookies" -H 'Content-Type: application/json' \
   -d '{"name":"Test Admin","email":"admin@example.test","password":"correct-horse-battery"}' \
