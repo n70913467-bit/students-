@@ -73,6 +73,8 @@ echo "stage: admin user creation"
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d "{\"user_id\":$user_id,\"member_role\":\"viewer\"}" \
   "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
+curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/users" | grep -q 'viewer@example.test'
+curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/members" | grep -q '"member_role":"viewer"'
 
 approval="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"title":"Smoke approval","details":"Check approval list route"}' \
@@ -81,6 +83,9 @@ approval_id="$(printf '%s' "$approval" | php -r '$d=json_decode(stream_get_conte
 test -n "$approval_id"
 echo "stage: approval creation"
 curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/approvals" | grep -q 'Smoke approval'
+curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -X PATCH -d '{"status":"approved"}' "$BASE_URL/api/approvals/$approval_id" | grep -q '"ok":true'
+curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/approvals" | grep -q '"status":"approved"'
 
 # Logout invalidates the session.
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -X POST "$BASE_URL/api/auth/logout" | grep -q '"ok":true'
