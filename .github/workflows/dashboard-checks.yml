@@ -27,6 +27,8 @@ jobs:
           test -f .gitignore
           test -f deployment/environment.example
           test -f docs/deployment.md
+          test -f deployment/preflight.php
+          test -f tests/preflight-smoke.sh
       - name: Verify dashboard scope and core features
         run: |
           grep -q "Project Control Dashboard" index.html
@@ -43,11 +45,16 @@ jobs:
         run: |
           php -l api.php
           php -l router.php
+          php -l deployment/preflight.php
       - name: Validate SQLite schema
         run: |
           php -r '$pdo = new PDO("sqlite::memory:"); $pdo->exec(file_get_contents("schema.sql")); $tables = $pdo->query("SELECT name FROM sqlite_master WHERE type = char(116,97,98,108,101)")->fetchAll(PDO::FETCH_COLUMN); foreach (["users","projects","project_members","tasks","activity_logs","approval_requests","login_attempts"] as $table) { if (!in_array($table, $tables, true)) { fwrite(STDERR, "Missing schema table: $table"); exit(1); } }'
       - name: Check smoke test shell syntax
-        run: bash -n tests/api-smoke.sh
+        run: |
+          bash -n tests/api-smoke.sh
+          bash -n tests/preflight-smoke.sh
+      - name: Run deployment preflight tests
+        run: bash tests/preflight-smoke.sh
       - name: Run API smoke tests
         run: bash tests/api-smoke.sh
       - name: Check frontend JavaScript syntax
