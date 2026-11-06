@@ -171,7 +171,7 @@ $('registerForm').addEventListener('submit', async (event) => {
   try {
     await api.registerFirstAdmin({
       name: $('registerName').value.trim(), email: $('registerEmail').value.trim(),
-      password: $('registerPassword').value,
+      password: $('registerPassword').value, setup_key: $('registerSetupKey').value,
     });
     await startSession();
   } catch (error) {
