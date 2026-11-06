@@ -1,4 +1,7 @@
 Options -Indexes
+
+# SQLite databases and application storage must never be served as static files.
+RewriteRule ^storage(?:/|$) - [F,NC,L]
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteRule ^api/?$ api.php?route=health [QSA,L]
