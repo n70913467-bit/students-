@@ -69,4 +69,16 @@ curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -X POST "$BASE_URL/api.
 status="$(curl -sS -o "$TMP_DIR/me.json" -w '%{http_code}' -b "$TMP_DIR/cookies" "$BASE_URL/api.php?route=auth/me")"
 test "$status" = "401"
 
-echo "API smoke tests passed: health, registration, CSRF, session, projects, tasks, users, memberships, approvals, and logout."
+# Viewer can read an assigned project but cannot perform writes.
+curl -fsS -c "$TMP_DIR/viewer-cookies" -H 'Content-Type: application/json' \
+  -d '{"email":"viewer@example.test","password":"viewer-password-123"}' \
+  "$BASE_URL/api.php?route=auth/login" >"$TMP_DIR/viewer-login.json"
+viewer_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/viewer-login.json")"
+test -n "$viewer_csrf"
+curl -fsS -b "$TMP_DIR/viewer-cookies" "$BASE_URL/api.php?route=projects/$project_id" | grep -q 'Smoke Test Project'
+status="$(curl -sS -o "$TMP_DIR/viewer-write.json" -w '%{http_code}' -b "$TMP_DIR/viewer-cookies" \
+  -H "X-CSRF-Token: $viewer_csrf" -H 'Content-Type: application/json' \
+  -d '{"name":"Viewer Must Not Create"}' "$BASE_URL/api.php?route=projects")"
+test "$status" = "403"
+
+echo "API smoke tests passed: health, registration, CSRF, sessions, projects, tasks, users, memberships, approvals, logout, and viewer permissions." health, registration, CSRF, session, projects, tasks, users, memberships, approvals, and logout."
