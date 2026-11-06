@@ -23,7 +23,7 @@ Run the authenticated app through PHP (do not open the HTML file directly): `php
 - For local development, use `php -S 127.0.0.1:8000 router.php`. Apache deployments can use the included `.htaccess`; configure equivalent rewrites for other servers.
 - The first admin is created once using `POST /api/auth/register` with JSON `{ "name": "...", "email": "...", "password": "at-least-12-characters" }`. Registration closes after the first account exists.
 - Login with `POST /api/auth/login`; passwords are hashed with Argon2id when available (otherwise PHP's default password algorithm). The server uses an HttpOnly, SameSite=Strict session cookie and returns a CSRF token that the frontend keeps in memory and sends as `X-CSRF-Token` for state-changing requests. Failed login attempts are throttled per email/IP pair.
-- `GET /api/health` checks API/database initialization. Authenticated routes include `/api/projects`, project detail, tasks, members, users, and approvals.
+- `GET /api/health` checks API/database initialization. Authenticated routes include `/api/projects`, project detail, tasks, activity logs, members, users, and approvals. Admins can create users, list users, and assign project roles; project managers can manage members through the API.
 - Project-level viewer memberships are read-only; project write permissions are checked by the API. The API also supports user creation, project member assignment, activity notes, approval listing/decisions, and project/task deletion.
 - Run `bash tests/api-smoke.sh` after installing PHP with PDO_SQLite to exercise health, first-admin registration, session lookup, project creation/read, and task creation.
 - GitHub Actions runs PHP syntax validation and the API smoke test on pushes and pull requests.
