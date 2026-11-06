@@ -18,7 +18,25 @@ This guide is intentionally provider-neutral. The repository does not include a 
 4. Create the database directory and make the PHP service account its owner. Restrict directory access to that account.
 5. Keep `storage/` blocked from public HTTP access. Apache deployments can use the root and storage `.htaccess` files; other servers need an equivalent deny rule.
 
-## 3. Publish and configure
+## 3. Run the deployment preflight
+
+Before publishing, run the CLI preflight from the application checkout:
+
+```sh
+export PROJECT_DASHBOARD_DB="/var/lib/project-control/dashboard.sqlite"
+export PROJECT_DASHBOARD_PUBLIC_ROOT="/var/www/project-control"
+export PROJECT_DASHBOARD_COOKIE_SECURE="1"
+php deployment/preflight.php
+```
+
+- Create the database parent directory first and grant write access to the PHP service account.
+- Set `PROJECT_DASHBOARD_PUBLIC_ROOT` to the actual public document root when running the CLI check; if omitted, the script uses the web server document root or the repository root.
+- The check verifies PHP 8.1+, PDO_SQLite, an absolute writable database path outside the public root, and secure session-cookie configuration.
+- A setup key is optional after first-admin bootstrap. If supplied, it must contain at least 32 characters; the script never prints the secret.
+- The preflight does not create a database, change server configuration, deploy the application, or certify production security.
+- Run `bash tests/preflight-smoke.sh` to test both passing and failing configuration cases locally.
+
+## 4. Publish and configure
 
 - Point the web document root at the application directory, or configure a private app directory with only required public files exposed.
 - Configure rewrite rules so `/api/health` and other `/api/*` routes reach `api.php`.
@@ -26,7 +44,7 @@ This guide is intentionally provider-neutral. The repository does not include a 
 - Configure TLS and confirm the browser receives the session cookie with the Secure, HttpOnly and SameSite=Strict attributes.
 - Configure server/edge rate limiting and monitoring in addition to the application's basic failed-login throttle.
 
-## 4. First administrator bootstrap
+## 5. First administrator bootstrap
 
 1. While HTTPS and the setup key are active, open the dashboard.
 2. Create the first admin using the setup key.
@@ -34,7 +52,7 @@ This guide is intentionally provider-neutral. The repository does not include a 
 4. Remove `PROJECT_DASHBOARD_SETUP_KEY` from the runtime environment and restart PHP workers.
 5. Verify that another first-admin registration is rejected.
 
-## 5. Verify after deployment
+## 6. Verify after deployment
 
 - `GET /api/health` returns `ok: true`.
 - Unauthenticated `GET /api/projects` returns HTTP 401.
@@ -46,7 +64,7 @@ This guide is intentionally provider-neutral. The repository does not include a 
 - Create a test project, task, activity and approval; refresh and confirm persistence.
 - Export CSV and verify that it contains expected project summaries.
 
-## 6. Backups, recovery and operations
+## 7. Backups, recovery and operations
 
 - Back up the SQLite database using a SQLite-aware backup method while accounting for WAL mode; do not copy only the main database file while writes are active.
 - Test restore into a separate environment before relying on backups.
