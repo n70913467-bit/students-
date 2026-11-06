@@ -35,7 +35,7 @@ This is an initial backend implementation, not production-ready. Before public d
 ## API client
 - `app.js` connects the login/register screen and dashboard CRUD actions to the same-origin API client.
 - `api-client.js` provides same-origin methods for authentication, projects, tasks, activity logs, users, project members, and approvals.
-- Run `npm run test:client` with Node.js 18+ to run the API client unit tests.
+- Run `npm test` with Node.js 18+ to run API client unit tests and frontend DOM/safe-rendering contract tests.
 
 ## Documentation
 - [Workflow and acceptance criteria](docs/workflow.md)
