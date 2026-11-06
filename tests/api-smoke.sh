@@ -214,4 +214,22 @@ curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$B
 status="$(curl -sS -o /dev/null -w '%{http_code}' -b "$TMP_DIR/admin-again" "$BASE_URL/api/projects/$project_id")"
 test "$status" = "404"
 
+# A production-style configuration must set the Secure cookie attribute even when
+# the local smoke-test transport is plain HTTP (simulating TLS termination upstream).
+PROJECT_DASHBOARD_COOKIE_SECURE=1 php -S 127.0.0.1:8788 router.php >"$TMP_DIR/secure-server.log" 2>&1 &
+SECURE_SERVER_PID=$!
+for attempt in $(seq 1 30); do
+  if curl -fsS "http://127.0.0.1:8788/api/health" >/dev/null; then break; fi
+  sleep 1
+done
+secure_login_status="$(curl -sS -D "$TMP_DIR/secure-login.headers" -o "$TMP_DIR/secure-login.json" -w '%{http_code}' \
+  -H 'Content-Type: application/json' -d '{"email":"admin@example.test","password":"correct-horse-battery"}' \
+  "http://127.0.0.1:8788/api/auth/login")"
+test "$secure_login_status" = "200"
+grep -qi 'Set-Cookie:.*; Secure' "$TMP_DIR/secure-login.headers"
+grep -qi 'Set-Cookie:.*HttpOnly' "$TMP_DIR/secure-login.headers"
+grep -qi 'Set-Cookie:.*SameSite=Strict' "$TMP_DIR/secure-login.headers"
+kill "$SECURE_SERVER_PID" 2>/dev/null || true
+echo "stage: secure cookie flag under production-style configuration"
+
 echo "API smoke tests passed: health, registration, CSRF, sessions, projects, tasks, users, memberships, approvals, logout, and viewer permissions."
