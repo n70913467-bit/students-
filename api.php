@@ -163,12 +163,12 @@ if ($method === 'POST' && $route === '/auth/register') {
     $name=trim((string)($body['name']??''));$email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');
     if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12) respond(422,['error'=>'First admin requires a name, valid email, and password of at least 12 characters']);
     $pdo->exec('BEGIN IMMEDIATE');
-    if((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()>0){$pdo->rollBack();respond(403,['error'=>'Registration is closed; ask an admin to create an account']);}
+    if((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()>0){$pdo->exec('ROLLBACK');respond(403,['error'=>'Registration is closed; ask an admin to create an account']);}
     try{
         $s=$pdo->prepare("INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,'admin')");
         $s->execute([$name,$email,password_hash($password,password_algorithm())]);
-        $newUserId=(int)$pdo->lastInsertId();$pdo->commit();
-    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();respond(409,['error'=>'Could not create admin account']);}
+        $newUserId=(int)$pdo->lastInsertId();$pdo->exec('COMMIT');
+    }catch(Throwable $e){try{$pdo->exec('ROLLBACK');}catch(Throwable $ignored){}respond(409,['error'=>'Could not create admin account']);}
     session_regenerate_id(true);$_SESSION['user_id']=$newUserId;$_SESSION['csrf']=bin2hex(random_bytes(32));
     respond(201,['user'=>current_user(),'csrf_token'=>$_SESSION['csrf']]);
 }
