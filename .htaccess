@@ -1,0 +1,6 @@
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^api/?$ api.php?route=health [QSA,L]
+  RewriteRule ^api/(.*)$ api.php?route=$1 [QSA,L]
+</IfModule>
