@@ -202,6 +202,11 @@ if ($method === 'GET' && $route === '/auth/me') {
     $u=require_user(); respond(200,['user'=>$u,'csrf_token'=>$_SESSION['csrf']??null]);
 }
 $u=require_user();
+if($method==='GET' && $route==='/users'){
+    if($u['role']!=='admin')respond(403,['error'=>'Only admins can list users']);
+    $users=$pdo->query('SELECT id,name,email,role,is_active FROM users ORDER BY name')->fetchAll();
+    respond(200,['users'=>$users]);
+}
 if (in_array($method,['POST','PATCH','PUT','DELETE'],true)) {
     if (!hash_equals((string)($_SESSION['csrf']??''),(string)($_SERVER['HTTP_X_CSRF_TOKEN']??''))) respond(419,['error'=>'CSRF token mismatch']);
     require_write($u);
@@ -239,6 +244,12 @@ if (preg_match('#^/projects/(\d+)$#',$route,$m)) {
         $vals[]=$id;$pdo->prepare('UPDATE projects SET '.implode(',',$sets).',updated_at=CURRENT_TIMESTAMP WHERE id=?')->execute($vals);
         log_activity($id,null,(int)$u['id'],'project_updated','Project details updated');respond(200,['ok'=>true]);
     }
+}
+if (preg_match('#^/projects/(\d+)/members$#',$route,$m) && $method==='GET') {
+    $pid=(int)$m[1];$membership=project_access($pid,$u);
+    if($u['role']!=='admin' && $membership!=='manager')respond(403,['error'=>'Only admins or project managers can list members']);
+    $s=$pdo->prepare('SELECT u.id,u.name,u.email,u.role,pm.member_role FROM project_members pm JOIN users u ON u.id=pm.user_id WHERE pm.project_id=? ORDER BY u.name');
+    $s->execute([$pid]);respond(200,['members'=>$s->fetchAll()]);
 }
 if (preg_match('#^/projects/(\d+)/activities$#',$route,$m) && $method==='POST') {
     $pid=(int)$m[1];project_write_access($pid,$u);$message=trim((string)($body['message']??''));
