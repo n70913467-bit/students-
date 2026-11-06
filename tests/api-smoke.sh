@@ -4,7 +4,7 @@ set -euo pipefail
 BASE_URL="http://127.0.0.1:8787"
 TMP_DIR="$(mktemp -d)"
 export PROJECT_DASHBOARD_DB="$TMP_DIR/test.sqlite"
-php -S 127.0.0.1:8787 -t . >"$TMP_DIR/server.log" 2>&1 &
+php -S 127.0.0.1:8787 router.php >"$TMP_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 cleanup() {
   kill "$SERVER_PID" 2>/dev/null || true
@@ -13,7 +13,7 @@ cleanup() {
 trap cleanup EXIT
 
 for attempt in $(seq 1 30); do
-  if curl -fsS "$BASE_URL/api.php?route=health" >/dev/null; then break; fi
+  if curl -fsS "$BASE_URL/api/health" >/dev/null; then break; fi
   sleep 1
 done
 
