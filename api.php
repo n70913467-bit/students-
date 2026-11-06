@@ -112,8 +112,14 @@ session_set_cookie_params(['httponly'=>true,'secure'=>$secure,'samesite'=>'Stric
 session_start();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/api.php'), '/');
-$route = '/' . ltrim(substr($path, strlen($base)), '/');
+$route = isset($_GET['route'])
+    ? '/' . trim((string)$_GET['route'], '/')
+    : (function () use ($path): string {
+        $script = $_SERVER['SCRIPT_NAME'] ?? '/api.php';
+        if (str_starts_with($path, $script . '/')) return '/' . ltrim(substr($path, strlen($script)), '/');
+        if (str_starts_with($path, '/api/')) return '/' . substr($path, 5);
+        return '/' . ltrim(substr($path, strlen(rtrim(dirname($script), '/'))), '/');
+    })();
 $body = in_array($method, ['POST','PATCH','PUT','DELETE'], true) ? input() : [];
 $pdo = db();
 
