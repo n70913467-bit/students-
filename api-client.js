@@ -41,6 +41,7 @@ export function createApiClient(baseUrl = '/api') {
     updateProject: (id, changes) => request(`projects/${encodeURIComponent(id)}`, { method: 'PATCH', body: changes }),
     deleteProject: (id) => request(`projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     listTasks: (projectId) => request(`projects/${encodeURIComponent(projectId)}/tasks`),
+    createActivity: (projectId, message) => request(`projects/${encodeURIComponent(projectId)}/activities`, { method: 'POST', body: { message } }),
     createTask: (projectId, task) => request(`projects/${encodeURIComponent(projectId)}/tasks`, { method: 'POST', body: task }),
     updateTask: (taskId, changes) => request(`tasks/${encodeURIComponent(taskId)}`, { method: 'PATCH', body: changes }),
     deleteTask: (taskId) => request(`tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' }),
