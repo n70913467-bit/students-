@@ -1,104 +1,53 @@
-# Data Model and Persistence Plan
+# Data Model and Persistence
 
-## Design goals
-Keep project records, tasks, activity history, and approval requests separate so the dashboard can grow from a local prototype into a multi-user application.
+This document describes the **implemented SQLite model** used by `api.php`. The schema uses integer auto-increment IDs and SQLite types; it is not the earlier proposed UUID/PostgreSQL design.
 
-## Proposed relational tables
+## Tables and relationships
 
-### users
-- `id` UUID primary key
-- `name` varchar(120) not null
-- `email` varchar(255) unique not null
-- `password_hash` text not null (never store plaintext passwords)
-- `role` enum: admin, member, viewer
-- `is_active` boolean default true
-- `created_at`, `updated_at` timestamps
+- `users`: name, unique email, password hash, account role (`admin`, `member`, `viewer`), active flag, creation time. Plaintext passwords are never stored.
+- `projects`: name, description, status (`planned`, `running`, `on_hold`, `stopped`), owner, next action, created/updated timestamps.
+- `project_members`: many-to-many user/project membership with project role (`manager`, `contributor`, `viewer`).
+- `tasks`: project, title, description, status (`todo`, `in_progress`, `blocked`, `done`), priority, optional assignee and due date, timestamps.
+- `activity_logs`: project, optional task and actor, event type, message, timestamp.
+- `approval_requests`: project, requester, optional approver, title/details, status (`pending`, `approved`, `rejected`, `cancelled`), requested/decision timestamps.
+- `login_attempts`: hashed email/IP attempt key and timestamp for basic failed-login throttling.
 
-### projects
-- `id` UUID primary key
-- `name` varchar(160) not null
-- `description` text nullable
-- `status` enum: planned, running, on_hold, stopped
-- `owner_id` UUID references users(id)
-- `next_action` text nullable
-- `created_at`, `updated_at` timestamps
-- `archived_at` timestamp nullable
+## Relationship summary
 
-### project_members
-- `project_id` UUID references projects(id)
-- `user_id` UUID references users(id)
-- `member_role` enum: manager, contributor, viewer
-- `joined_at` timestamp
-- Primary key: (project_id, user_id)
+- One project has many tasks, activity entries and approval requests.
+- Users join projects through `project_members`.
+- Tasks and activity entries may reference a user.
+- An approval belongs to a project and has a requester plus an optional approver.
+- Foreign keys are enabled by the API connection; project deletion cascades to project-owned records.
 
-### tasks
-- `id` UUID primary key
-- `project_id` UUID references projects(id)
-- `title` varchar(200) not null
-- `description` text nullable
-- `status` enum: todo, in_progress, blocked, done
-- `priority` enum: low, medium, high, urgent
-- `assignee_id` UUID references users(id), nullable
-- `due_date` date nullable
-- `created_at`, `updated_at`, `completed_at` timestamps
+## Indexes
 
-### activity_logs
-- `id` UUID primary key
-- `project_id` UUID references projects(id)
-- `task_id` UUID references tasks(id), nullable
-- `actor_id` UUID references users(id), nullable for system events
-- `event_type` varchar(60) not null
-- `message` text not null
-- `created_at` timestamp
-- Indexes: (project_id, created_at), (task_id, created_at)
+The API creates indexes for project status/update time, membership lookup by user/project, tasks by project/status, activity by project/time, approvals by project/status, and login-attempt lookup by key/time.
 
-### approval_requests
-- `id` UUID primary key
-- `project_id` UUID references projects(id)
-- `requested_by` UUID references users(id)
-- `approver_id` UUID references users(id), nullable
-- `title` varchar(160) not null
-- `details` text nullable
-- `status` enum: pending, approved, rejected, cancelled
-- `requested_at`, `decided_at` timestamps nullable
+## API routes implemented
 
-## Relationships
-- One project has many tasks, activity logs, and approval requests.
-- Users can join many projects through project_members.
-- A task may have one assignee.
-- Activity logs belong to a project and optionally a task and actor.
-- An approval request belongs to one project and records requester and optional approver.
-
-## API outline (future backend)
-- `GET /api/projects?status=&q=`
-- `POST /api/projects`
-- `GET /api/projects/:id`
-- `PATCH /api/projects/:id`
-- `GET /api/projects/:id/tasks`
-- `POST /api/projects/:id/tasks`
-- `PATCH /api/tasks/:id`
+- `GET /api/health`
+- `POST /api/auth/register` (one-time first-admin setup)
+- `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/:id`
+- `GET/POST /api/projects/:id/tasks`, `PATCH/DELETE /api/tasks/:id`
 - `POST /api/projects/:id/activities`
-- `GET /api/projects/:id/activities`
-- `POST /api/projects/:id/approvals`
-- `PATCH /api/approvals/:id`
+- `GET/POST /api/projects/:id/members`
+- `GET /api/users` (admin only), `POST /api/users` (admin only)
+- `GET/POST /api/projects/:id/approvals`, `PATCH /api/approvals/:id`
 
-## Data integrity and security
-- Use foreign keys and transactions for related changes.
-- Validate enum values and required fields on the server.
-- Hash passwords using a modern password-hashing algorithm; never store secrets in source code.
-- Enforce project membership and role permissions on every protected endpoint.
-- Record important changes in activity_logs.
-- Use pagination for project/task lists and indexes for common filters.
-- Back up the database and define retention/deletion rules before production.
+## Authentication and security controls
 
-## Current versus target
-Current prototype: one browser's localStorage; no shared database, authentication, or API.
-Target: PostgreSQL (or another relational database) behind an authenticated backend API. The schema above is a proposed design, not a deployed database.
+- Passwords are hashed with Argon2id when supported, otherwise PHP's `PASSWORD_DEFAULT`; login rehashes outdated password hashes.
+- PHP stores session state server-side. The browser receives an HttpOnly, SameSite=Strict cookie, Secure when HTTPS is detected.
+- Login regenerates the session ID. State-changing requests require a per-session CSRF token in `X-CSRF-Token`.
+- Failed login attempts are counted by a SHA-256 hash of normalized email plus remote IP; the current threshold is 10 attempts per 15 minutes.
+- API responses set no-store, nosniff, frame/referrer/permissions and Content-Security-Policy headers.
+- Project membership and viewer write restrictions are checked server-side.
 
-## Authentication and session handling
-- Passwords are stored only as hashes; the API uses Argon2id when the PHP runtime supports it and otherwise uses PHP's default password algorithm.
-- The browser receives a session cookie marked HttpOnly and SameSite=Strict (Secure when HTTPS is active). The session cookie contains no password or access token.
-- A random CSRF token is returned after login and is held in frontend memory; state-changing requests send it in the `X-CSRF-Token` header.
-- Failed login attempts are counted by a hash of the email/IP pair and throttled after 10 attempts within 15 minutes. Old attempt records are cleaned during login.
-- PHP session storage is server-side. No JWT or refresh-token flow is used by this implementation.
-- Production still needs independent security review, HTTPS, rate limiting at the edge, session monitoring, and backup/restore testing.
+## Operational notes and known limits
+
+- Default SQLite location is `storage/dashboard.sqlite`; production should set `PROJECT_DASHBOARD_DB` to a path outside the public web root. Apache rules must deny access to the storage path.
+- The login throttle is a basic application-level control, not a replacement for edge/WAF throttling.
+- No password-reset, email verification, MFA, account self-service, refresh-token, or JWT flow exists.
+- Before public deployment, configure HTTPS, restrict file permissions, run independent security/accessibility review, and test backup/restore.
