@@ -57,7 +57,7 @@ for attempt in $(seq 1 30); do
   sleep 1
 done
 missing_key_status="$(curl -sS -o "$TMP_DIR/missing-key.json" -w '%{http_code}' -H 'Content-Type: application/json' \
-  -d '{"name":"Unconfigured Admin","email":"unconfigured@example.test","password":"correct-horse-battery"}' \\
+  -d '{"name":"Unconfigured Admin","email":"unconfigured@example.test","password":"correct-horse-battery"}' 
   "http://127.0.0.1:8788/api/auth/register")"
 kill "$NO_KEY_SERVER_PID" 2>/dev/null || true
 test "$missing_key_status" = "503"
