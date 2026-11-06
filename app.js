@@ -87,7 +87,7 @@ function render() {
     [p.name, p.activity, p.next, ...p.tasks.map((task) => task.name)].join(' ').toLowerCase().includes(query));
   $('projectRows').innerHTML = visible.length ? visible.map((p) => {
     const actions = canWrite(p)
-      ? `<button class="secondary" data-edit="${esc(p.id)}">Edit</button><button class="ghost" data-touch="${esc(p.id)}">Log activity</button>${isAdmin() ? `<button class="danger" data-delete-project="${esc(p.id)}">Delete</button>` : ''}`
+      ? `<button class="secondary" data-edit="${esc(p.id)}" aria-label="Edit project ${esc(p.name)}">Edit</button><button class="ghost" data-touch="${esc(p.id)}" aria-label="Log activity for ${esc(p.name)}">Log activity</button>${isAdmin() ? `<button class="danger" data-delete-project="${esc(p.id)}" aria-label="Delete project ${esc(p.name)}">Delete</button>` : ''}`
       : '<span class="muted">Read only</span>';
     const style = p.status === 'Running' ? 'running' : p.status === 'On Hold' ? 'hold' : p.status === 'Stopped' ? 'stopped' : 'planned';
     return `<tr><td><b>${esc(p.name)}</b><small>${esc(p.activity)}</small></td>
@@ -103,9 +103,9 @@ function render() {
   $('addTask').disabled = !writable;
   $('tasks').innerHTML = selected ? (selected.tasks.length
     ? selected.tasks.map((task) => `<div class="task ${task.done ? 'done' : ''}">
-      <input type="checkbox" aria-label="Mark task complete" data-task="${esc(task.id)}" ${task.done ? 'checked' : ''} ${writable ? '' : 'disabled'}>
+      <input type="checkbox" aria-label="Mark task complete: ${esc(task.name)}" data-task="${esc(task.id)}" ${task.done ? 'checked' : ''} ${writable ? '' : 'disabled'}>
       <span class="body">${esc(task.name)}<small>Priority: ${esc(task.priority || 'medium')}${task.due ? ' · Due: ' + fmt(task.due) : ''}</small></span>
-      ${writable ? `<button class="danger" data-delete-task="${esc(task.id)}" type="button" aria-label="Delete task">×</button>` : ''}
+      ${writable ? `<button class="danger" data-delete-task="${esc(task.id)}" type="button" aria-label="Delete task: ${esc(task.name)}">×</button>` : ''}
     </div>`).join('')
     : '<div class="empty">Abhi koi task nahi. “Add Task” se shuru karein.</div>')
     : '<div class="empty">Project add karein.</div>';
@@ -116,7 +116,7 @@ function render() {
     const canDecide = canWrite(selected) && item.status === 'pending' &&
       (isAdmin() || Number(item.approver_id) === Number(currentUser?.id));
     return `<div class="task"><div class="body"><b>${esc(item.title)}</b><small>Status: ${esc(item.status)}${item.details ? ' · ' + esc(item.details) : ''}</small></div>
-      ${canDecide ? `<button class="secondary" data-approve="${item.id}">Approve</button><button class="danger" data-reject="${item.id}">Reject</button>` : ''}</div>`;
+      ${canDecide ? `<button class="secondary" data-approve="${item.id}" aria-label="Approve ${esc(item.title)}">Approve</button><button class="danger" data-reject="${item.id}" aria-label="Reject ${esc(item.title)}">Reject</button>` : ''}</div>`;
   }).join('') : '<div class="empty">No approval requests.</div>';
   $('membersList').innerHTML = selected?.members?.length
     ? selected.members.map((member) => `<div class="task"><div class="body"><b>${esc(member.name)}</b><small>${esc(member.email)} · ${esc(member.member_role)}</small></div></div>`).join('')
