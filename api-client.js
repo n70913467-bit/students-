@@ -45,6 +45,7 @@ export function createApiClient(baseUrl = '/api') {
     createApproval: (projectId, approval) => request(`projects/${encodeURIComponent(projectId)}/approvals`, { method: 'POST', body: approval }),
     listApprovals: (projectId) => request(`projects/${encodeURIComponent(projectId)}/approvals`),
     decideApproval: (approvalId, status) => request(`approvals/${encodeURIComponent(approvalId)}`, { method: 'PATCH', body: { status } }),
+    listUsers: () => request('users'),
     createUser: (user) => request('users', { method: 'POST', body: user }),
     addProjectMember: (projectId, member) => request(`projects/${encodeURIComponent(projectId)}/members`, { method: 'POST', body: member }),
   });
