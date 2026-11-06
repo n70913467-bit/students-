@@ -28,7 +28,6 @@ const fmt = (value) => {
 const isAdmin = () => currentUser?.role === 'admin';
 const canWrite = (project) => Boolean(currentUser && currentUser.role !== 'viewer' &&
   (currentUser.role === 'admin' || project?.access !== 'viewer'));
-const canManageMembers = () => isAdmin() || projects.find((project) => project.id === selectedId)?.access === 'manager';
 
 function showAuth(message = '') {
   $('authPanel').hidden = false;
@@ -122,7 +121,7 @@ function render() {
   $('membersList').innerHTML = selected?.members?.length
     ? selected.members.map((member) => `<div class="task"><div class="body"><b>${esc(member.name)}</b><small>${esc(member.email)} · ${esc(member.member_role)}</small></div></div>`).join('')
     : '<div class="empty">No project members listed.</div>';
-  $('teamPanel').hidden = !canManageMembers();
+  $('teamPanel').hidden = !isAdmin();
   $('userForm').hidden = !isAdmin();
   $('memberForm').hidden = !isAdmin();
   $('memberUserId').innerHTML = users.map((user) => `<option value="${user.id}">${esc(user.name)} · ${esc(user.email)} · ${esc(user.role)}</option>`).join('');
