@@ -171,6 +171,11 @@ curl -fsS -c "$TMP_DIR/admin-again" -H 'Content-Type: application/json' \
   -d '{"email":"admin@example.test","password":"correct-horse-battery"}' "$BASE_URL/api/auth/login" >"$TMP_DIR/admin-again.json"
 admin_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/admin-again.json")"
 test -n "$admin_csrf"
+# Create a separate project to verify that project membership isolates records.
+private_project="$(curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -H 'Content-Type: application/json' \
+  -d '{"name":"Private Project","status":"planned"}' "$BASE_URL/api/projects")"
+private_project_id="$(printf '%s' "$private_project" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$private_project_id"
 curl -fsS -b "$TMP_DIR/admin-again" -H "X-CSRF-Token: $admin_csrf" -X DELETE "$BASE_URL/api/tasks/$task_id" | grep -q '"ok":true'
 # Viewer can read an assigned project but cannot perform writes.
 curl -fsS -c "$TMP_DIR/viewer-cookies" -H 'Content-Type: application/json' \
@@ -179,6 +184,14 @@ curl -fsS -c "$TMP_DIR/viewer-cookies" -H 'Content-Type: application/json' \
 viewer_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/viewer-login.json")"
 test -n "$viewer_csrf"
 curl -fsS -b "$TMP_DIR/viewer-cookies" "$BASE_URL/api/projects/$project_id" | grep -q 'Smoke Test Project'
+# An authenticated viewer must not discover a project they are not assigned to.
+private_status="$(curl -sS -o "$TMP_DIR/viewer-private-project.json" -w '%{http_code}' -b "$TMP_DIR/viewer-cookies" "$BASE_URL/api/projects/$private_project_id")"
+test "$private_status" = "404"
+viewer_projects="$(curl -fsS -b "$TMP_DIR/viewer-cookies" "$BASE_URL/api/projects")"
+if printf '%s' "$viewer_projects" | grep -q 'Private Project'; then
+  echo "Viewer unexpectedly received an unassigned project"
+  exit 1
+fi
 status="$(curl -sS -o "$TMP_DIR/viewer-write.json" -w '%{http_code}' -b "$TMP_DIR/viewer-cookies" \
   -H "X-CSRF-Token: $viewer_csrf" -H 'Content-Type: application/json' \
   -d '{"name":"Viewer Must Not Create"}' "$BASE_URL/api/projects")"
