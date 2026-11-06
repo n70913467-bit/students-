@@ -25,6 +25,8 @@ jobs:
           test -f tests/api-client.test.mjs
           test -f tests/frontend-contract.test.mjs
           test -f .gitignore
+          test -f deployment/environment.example
+          test -f docs/deployment.md
       - name: Verify dashboard scope and core features
         run: |
           grep -q "Project Control Dashboard" index.html
