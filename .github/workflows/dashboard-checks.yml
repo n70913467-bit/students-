@@ -17,6 +17,9 @@ jobs:
         run: |
           test -f index.html
           test -f README.md
+          test -f api.php
+          test -f schema.sql
+          test -f tests/api-smoke.sh
       - name: Verify dashboard scope and core features
         run: |
           grep -q "Project Control Dashboard" index.html
@@ -24,3 +27,12 @@ jobs:
           grep -q "Export CSV" index.html
           grep -q "No payment features" index.html
           ! grep -Eiq "paymentGateway|paymentForm|upiIntegration|cardProcessor" index.html
+      - name: Set up PHP with SQLite
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite
+      - name: Check PHP syntax
+        run: php -l api.php
+      - name: Run API smoke tests
+        run: bash tests/api-smoke.sh
