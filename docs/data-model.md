@@ -39,6 +39,7 @@ The API creates indexes for project status/update time, membership lookup by use
 ## Authentication and security controls
 
 - Passwords are hashed with Argon2id when supported, otherwise PHP's `PASSWORD_DEFAULT`; login rehashes outdated password hashes.
+- When `PROJECT_DASHBOARD_SETUP_KEY` is configured, first-admin registration requires that key; set a strong random value in the server environment before public exposure and never commit it.
 - PHP stores session state server-side. The browser receives an HttpOnly, SameSite=Strict cookie, Secure when HTTPS is detected.
 - Login regenerates the session ID. State-changing requests require a per-session CSRF token in `X-CSRF-Token`.
 - Failed login attempts are counted by a SHA-256 hash of normalized email plus remote IP; the current threshold is 10 attempts per 15 minutes.
