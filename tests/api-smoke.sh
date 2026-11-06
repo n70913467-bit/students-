@@ -24,8 +24,10 @@ done
 
 health="$(curl -fsS "$BASE_URL/api/health")"
 echo "$health" | grep -q '"ok":true'
-curl -fsS "$BASE_URL/" | grep -q 'First Admin Setup'
-curl -fsS "$BASE_URL/app.js" | grep -q 'createApiClient'
+curl -fsS "$BASE_URL/" -o "$TMP_DIR/index.html"
+grep -q 'First Admin Setup' "$TMP_DIR/index.html"
+curl -fsS "$BASE_URL/app.js" -o "$TMP_DIR/app.js"
+grep -q 'createApiClient' "$TMP_DIR/app.js"
 storage_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/storage/dashboard.sqlite")"
 test "$storage_status" = "404"
 
