@@ -135,7 +135,7 @@ function project_write_access(int $projectId, array $u): void {
     if ($u['role'] !== 'admin' && $membership === 'viewer') respond(403, ['error' => 'Project viewer access is read-only']);
 }
 
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || getenv('PROJECT_DASHBOARD_COOKIE_SECURE') === '1';
 ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');
 ini_set('session.gc_maxlifetime', '1800');
