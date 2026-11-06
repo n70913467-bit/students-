@@ -146,8 +146,14 @@ function openProject(id = '') {
 }
 async function refreshAfter(action) {
   $('appStatus').textContent = '';
-  try { await action(); await loadProjects(); }
-  catch (error) { showError(error, 'appStatus'); }
+  try {
+    await action();
+    await loadProjects();
+    return true;
+  } catch (error) {
+    showError(error, 'appStatus');
+    return false;
+  }
 }
 
 $('loginForm').addEventListener('submit', async (event) => {
@@ -188,7 +194,7 @@ $('projectForm').addEventListener('submit', async (event) => {
   const id = $('projectId').value;
   const activity = $('projectActivity').value.trim();
   const approval = $('projectApproval').value.trim();
-  await refreshAfter(async () => {
+  const saved = await refreshAfter(async () => {
     let targetId = id;
     const payload = {
       name: $('projectName').value.trim(), status: statusCode[$('projectStatus').value],
@@ -202,7 +208,7 @@ $('projectForm').addEventListener('submit', async (event) => {
     if (activity) await api.createActivity(targetId, activity);
     if (approval && approval.toLowerCase() !== 'none') await api.createApproval(targetId, { title: approval });
   });
-  $('projectDialog').close();
+  if (saved) $('projectDialog').close();
 });
 $('projectRows').addEventListener('click', async (event) => {
   const edit = event.target.closest('[data-edit]');
@@ -229,10 +235,10 @@ $('addTask').addEventListener('click', () => {
 $('cancelTask').addEventListener('click', () => $('taskDialog').close());
 $('taskForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  await refreshAfter(() => api.createTask(selectedId, {
+  const saved = await refreshAfter(() => api.createTask(selectedId, {
     title: $('taskName').value.trim(), due_date: $('taskDue').value || null, priority: 'medium',
   }));
-  $('taskDialog').close();
+  if (saved) $('taskDialog').close();
 });
 $('tasks').addEventListener('click', async (event) => {
   const del = event.target.closest('[data-delete-task]');
@@ -259,10 +265,10 @@ $('userForm').addEventListener('submit', async (event) => {
 $('memberForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!selectedId) return;
-  await refreshAfter(() => api.addProjectMember(selectedId, {
+  const saved = await refreshAfter(() => api.addProjectMember(selectedId, {
     user_id: Number($('memberUserId').value), member_role: $('memberRole').value,
   }));
-  $('teamStatus').textContent = 'Project membership saved.';
+  if (saved) $('teamStatus').textContent = 'Project membership saved.';
 });
 $('approvalsList').addEventListener('click', async (event) => {
   const approve = event.target.closest('[data-approve]');
