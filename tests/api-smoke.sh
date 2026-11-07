@@ -89,6 +89,15 @@ project_id="$(printf '%s' "$project" | php -r '$d=json_decode(stream_get_content
 test -n "$project_id"
 echo "stage: project creation"
 
+# Text fields are bounded server-side even if a client bypasses HTML maxlength.
+long_project_name="$(printf '%121s' '' | tr ' ' 'A')"
+field_limit_status="$(curl -sS -o "$TMP_DIR/field-limit.json" -w '%{http_code}' -b "$TMP_DIR/cookies" \
+  -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -d "$(php -r 'echo json_encode(["name"=>str_repeat("A",121),"status"=>"planned"]);')" "$BASE_URL/api/projects")"
+test "$field_limit_status" = "422"
+grep -q 'Project name is too long' "$TMP_DIR/field-limit.json"
+echo "stage: API text field limits"
+
 task="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"title":"Smoke Test Task","priority":"high"}' \
   "$BASE_URL/api/projects/$project_id/tasks")"
