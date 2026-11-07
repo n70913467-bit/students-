@@ -38,6 +38,10 @@ This is an initial backend implementation, not production-ready. Before public d
 - `api-client.js` provides same-origin methods for authentication, projects, tasks, activity logs, users, project members, and approvals.
 - Run `npm test` with Node.js 18+ to run API client unit tests and frontend DOM/safe-rendering contract tests.
 
+## Docker deployment
+
+A PHP 8.3 + Apache container and persistent SQLite volume are included. See [Docker deployment](docs/docker.md) for local startup and public HTTPS deployment requirements.
+
 ## Documentation
 - [Workflow and acceptance criteria](docs/workflow.md)
 - [Secure deployment checklist](docs/deployment.md)
