@@ -115,6 +115,14 @@ status="$(curl -sS -o "$TMP_DIR/csrf.json" -w '%{http_code}' -b "$TMP_DIR/cookie
 test "$status" = "419"
 echo "stage: CSRF rejection"
 
+# Password inputs are capped before password hashing to bound CPU/memory work.
+long_password_status="$(curl -sS -o "$TMP_DIR/long-password.json" -w '%{http_code}' -b "$TMP_DIR/cookies" \
+  -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -d "$(php -r 'echo json_encode(["name"=>"Long Password User","email"=>"long-password@example.test","password"=>str_repeat("x",1025),"role"=>"viewer"]);')" "$BASE_URL/api/users")"
+test "$long_password_status" = "422"
+grep -q 'Password is too long' "$TMP_DIR/long-password.json"
+echo "stage: password size limit"
+
 # Admin can create a user and assign that user to a project.
 new_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"name":"Test Viewer","email":"viewer@example.test","password":"viewer-password-123","role":"viewer"}' \
