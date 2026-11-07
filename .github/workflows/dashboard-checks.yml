@@ -72,6 +72,10 @@ jobs:
       - name: Run frontend DOM contract tests
         run: npm run test:ui
 
+      - name: Validate Docker Compose configuration
+        run: |
+          PROJECT_DASHBOARD_SETUP_KEY=ci-compose-setup-key-0123456789abcdef docker compose config --quiet
+
       - name: Build PHP Apache Docker image
         run: docker build --tag project-control-dashboard:ci .
 
@@ -98,3 +102,21 @@ jobs:
             http://127.0.0.1:8789/api/auth/register | grep -q '"role":"admin"'
           unauth_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8789/api/projects)"
           test "$unauth_status" = "401"
+
+          # Recreate the container with the same volume and confirm the admin record survived.
+          docker rm -f project-dashboard-smoke >/dev/null
+          docker run -d --name project-dashboard-smoke -p 127.0.0.1:8789:80 \
+            -e PROJECT_DASHBOARD_COOKIE_SECURE=0 \
+            -e PROJECT_DASHBOARD_SETUP_KEY=ci-docker-setup-key-0123456789abcdef \
+            -v dashboard-smoke-data:/var/lib/project-control \
+            project-control-dashboard:ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8789/api/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8789/api/health | grep -q '"ok":true'
+          duplicate_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"CI Admin","email":"ci-admin@example.test","password":"ci-password-12345","setup_key":"ci-docker-setup-key-0123456789abcdef"}' \
+            http://127.0.0.1:8789/api/auth/register)"
+          test "$duplicate_status" = "409"
