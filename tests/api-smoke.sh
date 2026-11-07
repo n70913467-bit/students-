@@ -34,6 +34,14 @@ test "$storage_status" = "404"
 unauth_status="$(curl -sS -o "$TMP_DIR/unauth.json" -w '%{http_code}' "$BASE_URL/api/projects")"
 test "$unauth_status" = "401"
 
+# Oversized JSON requests must be rejected before JSON parsing or route handling.
+head -c 1048577 /dev/zero >"$TMP_DIR/oversized.json"
+oversized_status="$(curl -sS -o "$TMP_DIR/oversized-response.json" -w '%{http_code}' \
+  -H 'Content-Type: application/json' --data-binary @"$TMP_DIR/oversized.json" "$BASE_URL/api/auth/login")"
+test "$oversized_status" = "413"
+grep -q 'Request body is too large' "$TMP_DIR/oversized-response.json"
+echo "stage: oversized request body rejected"
+
 wrong_setup="$(curl -sS -o "$TMP_DIR/wrong-setup.json" -w '%{http_code}' -H 'Content-Type: application/json' \
   -d '{"name":"Test Admin","email":"admin@example.test","password":"correct-horse-battery","setup_key":"wrong"}' "$BASE_URL/api/auth/register")"
 test "$wrong_setup" = "403"
