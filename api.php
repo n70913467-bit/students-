@@ -34,6 +34,11 @@ function text_field(mixed $value, int $maxBytes, string $label, bool $required =
     if (strlen($text) > $maxBytes) respond(422, ['error' => $label . ' is too long (maximum ' . $maxBytes . ' bytes)']);
     return $text;
 }
+function password_field(mixed $value): string {
+    if (!is_string($value)) respond(422, ['error' => 'Password must be text']);
+    if (strlen($value) > 1024) respond(422, ['error' => 'Password is too long (maximum 1024 bytes)']);
+    return $value;
+}
 function db(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
@@ -180,7 +185,7 @@ if ($method === 'POST' && $route === '/auth/register') {
     if (!hash_equals($setupKey, (string)($body['setup_key'] ?? ''))) {
         respond(403, ['error' => 'A valid first-admin setup key is required']);
     }
-    $name=text_field($body['name']??'',120,'Name',true);$email=strtolower(text_field($body['email']??'',254,'Email',true));$password=(string)($body['password']??'');
+    $name=text_field($body['name']??'',120,'Name',true);$email=strtolower(text_field($body['email']??'',254,'Email',true));$password=password_field($body['password']??'');
     if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12) respond(422,['error'=>'First admin requires a name, valid email, and password of at least 12 characters']);
     $pdo->exec('BEGIN IMMEDIATE');
     if((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()>0){$pdo->exec('ROLLBACK');respond(403,['error'=>'Registration is closed; ask an admin to create an account']);}
@@ -193,7 +198,7 @@ if ($method === 'POST' && $route === '/auth/register') {
     respond(201,['user'=>current_user(),'csrf_token'=>$_SESSION['csrf']]);
 }
 if ($method === 'POST' && $route === '/auth/login') {
-    $email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');
+    $email=strtolower(text_field($body['email']??'',254,'Email'));$password=password_field($body['password']??'');
     $attemptKey=login_attempt_key($email);
     $pdo->prepare("DELETE FROM login_attempts WHERE attempted_at < datetime('now','-1 day')")->execute();
     $rate=$pdo->prepare("SELECT COUNT(*) FROM login_attempts WHERE attempt_key=? AND attempted_at >= datetime('now','-15 minutes')");
