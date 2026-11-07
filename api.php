@@ -294,7 +294,7 @@ if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='PATCH') {
 }
 if ($method==='POST' && $route==='/users') {
     if ($u['role']!=='admin') respond(403,['error'=>'Only admins can create users']);
-    $name=text_field($body['name']??'',120,'Name',true);$email=strtolower(text_field($body['email']??'',254,'Email',true));$password=(string)($body['password']??'');$role=(string)($body['role']??'member');
+    $name=text_field($body['name']??'',120,'Name',true);$email=strtolower(text_field($body['email']??'',254,'Email',true));$password=password_field($body['password']??'');$role=(string)($body['role']??'member');
     if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12 || !in_array($role,['admin','member','viewer'],true)) respond(422,['error'=>'Name, valid email, 12-character password, and valid role are required']);
     try{$s=$pdo->prepare('INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,?)');$s->execute([$name,$email,password_hash($password,password_algorithm()),$role]);}
     catch(Throwable $e){respond(409,['error'=>'Could not create user; email may already exist']);}
