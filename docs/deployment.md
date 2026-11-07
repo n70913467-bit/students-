@@ -16,7 +16,7 @@ This guide is intentionally provider-neutral. The repository does not include a 
 2. Set `PROJECT_DASHBOARD_DB` to an absolute path outside the public web root.
 3. Generate a long, unique `PROJECT_DASHBOARD_SETUP_KEY`; store it in the hosting provider's secret/environment manager, not in Git.
 4. Create the database directory and make the PHP service account its owner. Restrict directory access to that account.
-5. Keep `storage/` blocked from public HTTP access. Apache deployments can use the root and storage `.htaccess` files; other servers need an equivalent deny rule.
+5. Keep `storage/` blocked from public HTTP access. Apache deployments use the root `.htaccess` rewrite rule and `storage/.htaccess` deny rule; other servers must configure an equivalent web-server deny rule. Verify direct requests for the database and SQLite WAL files return 403 or 404.
 
 ## 3. Run the deployment preflight
 
