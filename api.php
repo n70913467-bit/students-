@@ -16,8 +16,13 @@ function respond(int $status, array $body): never {
     exit;
 }
 function input(): array {
+    // Keep API request bodies bounded to avoid oversized JSON payloads exhausting memory.
+    $maxBytes = 1024 * 1024;
+    $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+    if ($contentLength > $maxBytes) respond(413, ['error' => 'Request body is too large']);
     $raw = file_get_contents('php://input');
     if ($raw === false || $raw === '') return [];
+    if (strlen($raw) > $maxBytes) respond(413, ['error' => 'Request body is too large']);
     $data = json_decode($raw, true);
     if (!is_array($data)) respond(400, ['error' => 'Invalid JSON body']);
     return $data;
