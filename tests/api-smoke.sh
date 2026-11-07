@@ -151,6 +151,20 @@ test "$manager_user_list" = "403"
 curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' \
   -X PATCH -d '{"status":"approved"}' "$BASE_URL/api/approvals/$assigned_approval_id" | grep -q '"ok":true'
 
+# A project manager must not decide an approval assigned to somebody else.
+unassigned_approval="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -d '{"title":"Admin-only decision","details":"This approval is not assigned to the manager"}' \
+  "$BASE_URL/api/projects/$project_id/approvals")"
+unassigned_approval_id="$(printf '%s' "$unassigned_approval" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$unassigned_approval_id"
+manager_decision_status="$(curl -sS -o "$TMP_DIR/manager-unassigned-decision.json" -w '%{http_code}' \
+  -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' \
+  -X PATCH -d '{"status":"approved"}' "$BASE_URL/api/approvals/$unassigned_approval_id")"
+test "$manager_decision_status" = "403"
+curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+  -X PATCH -d '{"status":"rejected"}' "$BASE_URL/api/approvals/$unassigned_approval_id" | grep -q '"ok":true'
+echo "stage: approval decision restricted to assigned approver or admin"
+
 # Logout invalidates the session.
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -X POST "$BASE_URL/api/auth/logout" | grep -q '"ok":true'
 status="$(curl -sS -o "$TMP_DIR/me.json" -w '%{http_code}' -b "$TMP_DIR/cookies" "$BASE_URL/api/auth/me")"
