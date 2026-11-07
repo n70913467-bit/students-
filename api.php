@@ -27,6 +27,13 @@ function input(): array {
     if (!is_array($data)) respond(400, ['error' => 'Invalid JSON body']);
     return $data;
 }
+function text_field(mixed $value, int $maxBytes, string $label, bool $required = false): string {
+    if (!is_string($value) && !is_numeric($value)) respond(422, ['error' => $label . ' must be text']);
+    $text = trim((string)$value);
+    if ($required && $text === '') respond(422, ['error' => $label . ' is required']);
+    if (strlen($text) > $maxBytes) respond(422, ['error' => $label . ' is too long (maximum ' . $maxBytes . ' bytes)']);
+    return $text;
+}
 function db(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
@@ -173,7 +180,7 @@ if ($method === 'POST' && $route === '/auth/register') {
     if (!hash_equals($setupKey, (string)($body['setup_key'] ?? ''))) {
         respond(403, ['error' => 'A valid first-admin setup key is required']);
     }
-    $name=trim((string)($body['name']??''));$email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');
+    $name=text_field($body['name']??'',120,'Name',true);$email=strtolower(text_field($body['email']??'',254,'Email',true));$password=(string)($body['password']??'');
     if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12) respond(422,['error'=>'First admin requires a name, valid email, and password of at least 12 characters']);
     $pdo->exec('BEGIN IMMEDIATE');
     if((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()>0){$pdo->exec('ROLLBACK');respond(403,['error'=>'Registration is closed; ask an admin to create an account']);}
@@ -234,10 +241,10 @@ if ($method==='GET' && $route==='/projects') {
     $s=$pdo->prepare($sql);$s->execute($params);respond(200,['projects'=>$s->fetchAll()]);
 }
 if ($method==='POST' && $route==='/projects') {
-    $name=trim((string)($body['name']??''));$status=(string)($body['status']??'planned');
+    $name=text_field($body['name']??'',120,'Project name',true);$status=(string)($body['status']??'planned');
     if($name==='' || !in_array($status,['planned','running','on_hold','stopped'],true))respond(422,['error'=>'Valid project name and status are required']);
     $s=$pdo->prepare('INSERT INTO projects(name,description,status,owner_id,next_action) VALUES(?,?,?,?,?)');
-    $s->execute([$name,trim((string)($body['description']??'')),$status,$u['id'],trim((string)($body['next_action']??''))]);$id=(int)$pdo->lastInsertId();
+    $description=text_field($body['description']??'',5000,'Project description');$nextAction=text_field($body['next_action']??'',5000,'Next action');$s->execute([$name,$description,$status,$u['id'],$nextAction]);$id=(int)$pdo->lastInsertId();
     $pdo->prepare("INSERT INTO project_members(project_id,user_id,member_role) VALUES(?,?,'manager')")->execute([$id,$u['id']]);
     log_activity($id,null,(int)$u['id'],'project_created','Project created');respond(201,['id'=>$id]);
 }
@@ -249,7 +256,7 @@ if (preg_match('#^/projects/(\d+)$#',$route,$m)) {
         foreach($allowed as $k){
             if(!array_key_exists($k,$body))continue;
             $value=$body[$k];
-            if($k==='name'){$value=trim((string)$value);if($value==='')respond(422,['error'=>'Project name cannot be empty']);}
+            if($k==='name'){$value=text_field($value,120,'Project name',true);} if($k==='description'){$value=text_field($value,5000,'Project description');} if($k==='next_action'){$value=text_field($value,5000,'Next action');}
             if($k==='status' && !in_array($value,['planned','running','on_hold','stopped'],true))respond(422,['error'=>'Invalid project status']);
             $sets[]="$k=?";$vals[]=$value;
         }
@@ -265,25 +272,24 @@ if (preg_match('#^/projects/(\d+)/members$#',$route,$m) && $method==='GET') {
     $s->execute([$pid]);respond(200,['members'=>$s->fetchAll()]);
 }
 if (preg_match('#^/projects/(\d+)/activities$#',$route,$m) && $method==='POST') {
-    $pid=(int)$m[1];project_write_access($pid,$u);$message=trim((string)($body['message']??''));
-    if($message==='')respond(422,['error'=>'Activity message is required']);
+    $pid=(int)$m[1];project_write_access($pid,$u);$message=text_field($body['message']??'',5000,'Activity message',true);
     log_activity($pid,null,(int)$u['id'],'note_added',$message);respond(201,['ok'=>true]);
 }
 if (preg_match('#^/projects/(\d+)/tasks$#',$route,$m)) {
     $pid=(int)$m[1];project_access($pid,$u);
     if($method==='GET'){$s=$pdo->prepare('SELECT * FROM tasks WHERE project_id=? ORDER BY created_at DESC');$s->execute([$pid]);respond(200,['tasks'=>$s->fetchAll()]);}
-    if($method==='POST'){project_write_access($pid,$u);$title=trim((string)($body['title']??''));if($title==='')respond(422,['error'=>'Task title is required']);$priority=(string)($body['priority']??'medium');if(!in_array($priority,['low','medium','high','urgent'],true))respond(422,['error'=>'Invalid priority']);$s=$pdo->prepare('INSERT INTO tasks(project_id,title,description,priority,due_date) VALUES(?,?,?,?,?)');$s->execute([$pid,$title,trim((string)($body['description']??'')),$priority,$body['due_date']??null]);$tid=(int)$pdo->lastInsertId();log_activity($pid,$tid,(int)$u['id'],'task_created','Task added: '.$title);respond(201,['id'=>$tid]);}
+    if($method==='POST'){project_write_access($pid,$u);$title=text_field($body['title']??'',120,'Task title',true);$priority=(string)($body['priority']??'medium');if(!in_array($priority,['low','medium','high','urgent'],true))respond(422,['error'=>'Invalid priority']);$description=text_field($body['description']??'',5000,'Task description');$s=$pdo->prepare('INSERT INTO tasks(project_id,title,description,priority,due_date) VALUES(?,?,?,?,?)');$s->execute([$pid,$title,$description,$priority,$body['due_date']??null]);$tid=(int)$pdo->lastInsertId();log_activity($pid,$tid,(int)$u['id'],'task_created','Task added: '.$title);respond(201,['id'=>$tid]);}
 }
 if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='PATCH') {
     $id=(int)$m[1];$s=$pdo->prepare('SELECT * FROM tasks WHERE id=?');$s->execute([$id]);$task=$s->fetch();if(!$task)respond(404,['error'=>'Task not found']);project_write_access((int)$task['project_id'],$u);
     $status=(string)($body['status']??$task['status']);if(!in_array($status,['todo','in_progress','blocked','done'],true))respond(422,['error'=>'Invalid task status']);
     $priority=(string)($body['priority']??$task['priority']);if(!in_array($priority,['low','medium','high','urgent'],true))respond(422,['error'=>'Invalid priority']);
-    $title=trim((string)($body['title']??$task['title']));if($title==='')respond(422,['error'=>'Task title is required']);
+    $title=text_field($body['title']??$task['title'],120,'Task title',true);
     $s=$pdo->prepare('UPDATE tasks SET title=?,status=?,priority=?,completed_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');$s->execute([$title,$status,$priority,$status==='done'?date('c'):null,$id]);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_updated','Task updated: '.$title.' ('.$status.')');respond(200,['ok'=>true]);
 }
 if ($method==='POST' && $route==='/users') {
     if ($u['role']!=='admin') respond(403,['error'=>'Only admins can create users']);
-    $name=trim((string)($body['name']??''));$email=strtolower(trim((string)($body['email']??'')));$password=(string)($body['password']??'');$role=(string)($body['role']??'member');
+    $name=text_field($body['name']??'',120,'Name',true);$email=strtolower(text_field($body['email']??'',254,'Email',true));$password=(string)($body['password']??'');$role=(string)($body['role']??'member');
     if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12 || !in_array($role,['admin','member','viewer'],true)) respond(422,['error'=>'Name, valid email, 12-character password, and valid role are required']);
     try{$s=$pdo->prepare('INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,?)');$s->execute([$name,$email,password_hash($password,password_algorithm()),$role]);}
     catch(Throwable $e){respond(409,['error'=>'Could not create user; email may already exist']);}
@@ -312,7 +318,7 @@ if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='DELETE') {
     $pdo->prepare('DELETE FROM tasks WHERE id=?')->execute([$id]);respond(200,['ok'=>true]);
 }
 if (preg_match('#^/projects/(\d+)/approvals$#',$route,$m) && $method==='POST') {
-    $pid=(int)$m[1];project_write_access($pid,$u);$title=trim((string)($body['title']??''));if($title==='')respond(422,['error'=>'Approval title is required']);$approverId=isset($body['approver_id'])?(int)$body['approver_id']:null;if($approverId!==null){$check=$pdo->prepare('SELECT 1 FROM users u LEFT JOIN project_members pm ON pm.user_id=u.id AND pm.project_id=? WHERE u.id=? AND u.is_active=1 AND (u.role=\'admin\' OR (pm.user_id IS NOT NULL AND pm.member_role IN (\'manager\',\'contributor\')))');$check->execute([$pid,$approverId]);if(!$check->fetchColumn())respond(422,['error'=>'Approver must be an active member of this project or an admin']);}$s=$pdo->prepare('INSERT INTO approval_requests(project_id,requested_by,approver_id,title,details) VALUES(?,?,?,?,?)');$s->execute([$pid,$u['id'],$approverId,$title,trim((string)($body['details']??''))]);$id=(int)$pdo->lastInsertId();log_activity($pid,null,(int)$u['id'],'approval_requested','Approval requested: '.$title);respond(201,['id'=>$id]);
+    $pid=(int)$m[1];project_write_access($pid,$u);$title=text_field($body['title']??'',160,'Approval title',true);$approverId=isset($body['approver_id'])?(int)$body['approver_id']:null;if($approverId!==null){$check=$pdo->prepare('SELECT 1 FROM users u LEFT JOIN project_members pm ON pm.user_id=u.id AND pm.project_id=? WHERE u.id=? AND u.is_active=1 AND (u.role=\'admin\' OR (pm.user_id IS NOT NULL AND pm.member_role IN (\'manager\',\'contributor\')))');$check->execute([$pid,$approverId]);if(!$check->fetchColumn())respond(422,['error'=>'Approver must be an active member of this project or an admin']);}$details=text_field($body['details']??'',5000,'Approval details');$s=$pdo->prepare('INSERT INTO approval_requests(project_id,requested_by,approver_id,title,details) VALUES(?,?,?,?,?)');$s->execute([$pid,$u['id'],$approverId,$title,$details]);$id=(int)$pdo->lastInsertId();log_activity($pid,null,(int)$u['id'],'approval_requested','Approval requested: '.$title);respond(201,['id'=>$id]);
 }
 if (preg_match('#^/approvals/(\d+)$#',$route,$m) && $method==='PATCH') {
     $id=(int)$m[1];$s=$pdo->prepare('SELECT * FROM approval_requests WHERE id=?');$s->execute([$id]);$a=$s->fetch();if(!$a)respond(404,['error'=>'Approval not found']);project_write_access((int)$a['project_id'],$u);if($u['role']!=='admin' && (int)$a['approver_id']!==(int)$u['id'])respond(403,['error'=>'Only an admin or assigned approver can decide']);$status=(string)($body['status']??'');if(!in_array($status,['approved','rejected','cancelled'],true))respond(422,['error'=>'Invalid approval decision']);$pdo->prepare('UPDATE approval_requests SET status=?,decided_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$status,$id]);log_activity((int)$a['project_id'],null,(int)$u['id'],'approval_decided','Approval '.$status.': '.$a['title']);respond(200,['ok'=>true]);
