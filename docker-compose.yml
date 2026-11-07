@@ -1,0 +1,15 @@
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      PROJECT_DASHBOARD_DB: /var/lib/project-control/dashboard.sqlite
+      PROJECT_DASHBOARD_COOKIE_SECURE: "1"
+      PROJECT_DASHBOARD_SETUP_KEY: ${PROJECT_DASHBOARD_SETUP_KEY:?Set PROJECT_DASHBOARD_SETUP_KEY in your environment}
+    volumes:
+      - dashboard_data:/var/lib/project-control
+    restart: unless-stopped
+
+volumes:
+  dashboard_data:
