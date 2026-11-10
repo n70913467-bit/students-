@@ -5,7 +5,7 @@ This guide is intentionally provider-neutral. The repository does not include a 
 ## 1. Server requirements
 
 - PHP 8.1 or newer with PDO_SQLite enabled.
-- Apache with rewrite support, or a web server configured to route `/api/*` to `api.php`.
+- Apache with `mod_rewrite` and `mod_headers` enabled, or a web server configured to route `/api/*` to `api.php` and apply the documented security headers to frontend responses.
 - HTTPS enabled before users sign in.
 - A dedicated writable database directory outside the public document root.
 - A PHP-FPM/web-server account with write access only to the application and database paths it needs.
