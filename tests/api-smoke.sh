@@ -103,7 +103,13 @@ task="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Typ
   "$BASE_URL/api/projects/$project_id/tasks")"
 task_id="$(printf '%s' "$task" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
 test -n "$task_id"
-echo "stage: task creation"
+invalid_due_status="$(curl -sS -o "$TMP_DIR/invalid-due-date.json" -w '%{http_code}' -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"title":"Invalid due date","due_date":"2026-02-30"}' "$BASE_URL/api/projects/$project_id/tasks")"
+test "$invalid_due_status" = "422"
+valid_due_status="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"title":"Valid due date","due_date":"2026-12-31"}' "$BASE_URL/api/projects/$project_id/tasks")"
+valid_due_id="$(printf '%s' "$valid_due_status" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$valid_due_id"
+curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id" | grep -q '"due_date":"2026-12-31"'
+echo "stage: task creation and due-date validation"
 
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"message":"Smoke activity entry"}' "$BASE_URL/api/projects/$project_id/activities" | grep -q '"ok":true'
