@@ -34,6 +34,16 @@ function text_field(mixed $value, int $maxBytes, string $label, bool $required =
     if (strlen($text) > $maxBytes) respond(422, ['error' => $label . ' is too long (maximum ' . $maxBytes . ' bytes)']);
     return $text;
 }
+function optional_date_field(mixed $value, string $label): ?string {
+    if ($value === null || $value === '') return null;
+    if (!is_string($value)) respond(422, ['error' => $label . ' must be a YYYY-MM-DD date']);
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+    $errors = DateTimeImmutable::getLastErrors();
+    if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) || $date->format('Y-m-d') !== $value) {
+        respond(422, ['error' => $label . ' must be a valid YYYY-MM-DD date']);
+    }
+    return $value;
+}
 function password_field(mixed $value): string {
     if (!is_string($value)) respond(422, ['error' => 'Password must be text']);
     if (strlen($value) > 1024) respond(422, ['error' => 'Password is too long (maximum 1024 bytes)']);
@@ -283,7 +293,7 @@ if (preg_match('#^/projects/(\d+)/activities$#',$route,$m) && $method==='POST') 
 if (preg_match('#^/projects/(\d+)/tasks$#',$route,$m)) {
     $pid=(int)$m[1];project_access($pid,$u);
     if($method==='GET'){$s=$pdo->prepare('SELECT * FROM tasks WHERE project_id=? ORDER BY created_at DESC');$s->execute([$pid]);respond(200,['tasks'=>$s->fetchAll()]);}
-    if($method==='POST'){project_write_access($pid,$u);$title=text_field($body['title']??'',120,'Task title',true);$priority=(string)($body['priority']??'medium');if(!in_array($priority,['low','medium','high','urgent'],true))respond(422,['error'=>'Invalid priority']);$description=text_field($body['description']??'',5000,'Task description');$s=$pdo->prepare('INSERT INTO tasks(project_id,title,description,priority,due_date) VALUES(?,?,?,?,?)');$s->execute([$pid,$title,$description,$priority,$body['due_date']??null]);$tid=(int)$pdo->lastInsertId();log_activity($pid,$tid,(int)$u['id'],'task_created','Task added: '.$title);respond(201,['id'=>$tid]);}
+    if($method==='POST'){project_write_access($pid,$u);$title=text_field($body['title']??'',120,'Task title',true);$priority=(string)($body['priority']??'medium');if(!in_array($priority,['low','medium','high','urgent'],true))respond(422,['error'=>'Invalid priority']);$description=text_field($body['description']??'',5000,'Task description');$dueDate=optional_date_field($body['due_date']??null,'Due date');$s=$pdo->prepare('INSERT INTO tasks(project_id,title,description,priority,due_date) VALUES(?,?,?,?,?)');$s->execute([$pid,$title,$description,$priority,$dueDate]);$tid=(int)$pdo->lastInsertId();log_activity($pid,$tid,(int)$u['id'],'task_created','Task added: '.$title);respond(201,['id'=>$tid]);}
 }
 if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='PATCH') {
     $id=(int)$m[1];$s=$pdo->prepare('SELECT * FROM tasks WHERE id=?');$s->execute([$id]);$task=$s->fetch();if(!$task)respond(404,['error'=>'Task not found']);project_write_access((int)$task['project_id'],$u);
