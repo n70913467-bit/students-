@@ -111,6 +111,8 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:8789/api/health | grep -q '"ok":true'
+          curl -fsS -D - -o /dev/null http://127.0.0.1:8789/ | grep -qi '^X-Frame-Options: DENY'
+          curl -fsS -D - -o /dev/null http://127.0.0.1:8789/ | grep -qi '^Content-Security-Policy:'
           curl -fsS -H 'Content-Type: application/json' \
             -d '{"name":"CI Admin","email":"ci-admin@example.test","password":"ci-password-12345","setup_key":"ci-docker-setup-key-0123456789abcdef"}' \
             http://127.0.0.1:8789/api/auth/register | grep -q '"role":"admin"'
