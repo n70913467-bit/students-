@@ -51,3 +51,10 @@ test('project managers can see their assigned project member list without admin-
   assert.match(app, /\$\('userForm'\)\.hidden = !isAdmin\(\);/);
   assert.match(app, /\$\('memberForm'\)\.hidden = !isAdmin\(\);/);
 });
+
+
+test('project creation and editing controls follow admin and manager roles', () => {
+  assert.match(app, /\$\('addProject'\)\.disabled = !isAdmin\(\);/);
+  assert.match(app, /const canManageProject = \(project\) => Boolean\(isAdmin\(\) \|\| project\?\.access === 'manager'\);/);
+  assert.match(app, /canManageProject\(p\).*data-edit/);
+});
