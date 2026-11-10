@@ -6,6 +6,7 @@
   "scripts": {
     "test:client": "node --test tests/api-client.test.mjs",
     "test:ui": "node --test tests/frontend-contract.test.mjs",
-    "test": "npm run test:client && npm run test:ui"
+    "test:csv": "node --test tests/csv.test.mjs",
+    "test": "npm run test:client && npm run test:ui && npm run test:csv"
   }
 }
