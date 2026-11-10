@@ -19,6 +19,8 @@ jobs:
           test -f README.md
           test -f api.php
           test -f app.js
+          test -f csv.js
+          test -f tests/csv.test.mjs
           test -f router.php
           test -f schema.sql
           test -f tests/api-smoke.sh
@@ -67,10 +69,13 @@ jobs:
         run: |
           node --check app.js
           node --check api-client.js
+          node --check csv.js
       - name: Run JavaScript API client tests
         run: npm run test:client
       - name: Run frontend DOM contract tests
         run: npm run test:ui
+      - name: Run CSV export security tests
+        run: npm run test:csv
 
       - name: Validate Docker Compose configuration
         run: |
