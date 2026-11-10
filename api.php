@@ -312,8 +312,8 @@ if ($method==='POST' && $route==='/users') {
     respond(201,['id'=>(int)$pdo->lastInsertId()]);
 }
 if (preg_match('#^/projects/(\d+)/members$#',$route,$m) && $method==='POST') {
-    $pid=(int)$m[1];$membership=project_access($pid,$u);
-    if($u['role']!=='admin' && $membership!=='manager') respond(403,['error'=>'Only admins or project managers can add members']);
+    $pid=(int)$m[1];project_access($pid,$u);
+    if($u['role']!=='admin') respond(403,['error'=>'Only admins can add project members']);
     $userId=(int)($body['user_id']??0);$memberRole=(string)($body['member_role']??'contributor');
     if($userId<1 || !in_array($memberRole,['manager','contributor','viewer'],true)) respond(422,['error'=>'Valid user_id and member_role are required']);
     if($u['role']!=='admin' && $memberRole==='manager') respond(403,['error'=>'Only admins can assign project manager access']);
@@ -330,11 +330,11 @@ if (preg_match('#^/projects/(\d+)$#',$route,$m) && $method==='DELETE') {
 }
 if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='DELETE') {
     $id=(int)$m[1];$s=$pdo->prepare('SELECT * FROM tasks WHERE id=?');$s->execute([$id]);$task=$s->fetch();if(!$task)respond(404,['error'=>'Task not found']);
-    project_write_access((int)$task['project_id'],$u);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_deleted','Task deleted: '.$task['title']);
+    $membership=project_access((int)$task['project_id'],$u);if($u['role']!=='admin' && $membership!=='manager')respond(403,['error'=>'Only admins or project managers can delete tasks']);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_deleted','Task deleted: '.$task['title']);
     $pdo->prepare('DELETE FROM tasks WHERE id=?')->execute([$id]);respond(200,['ok'=>true]);
 }
 if (preg_match('#^/projects/(\d+)/approvals$#',$route,$m) && $method==='POST') {
-    $pid=(int)$m[1];project_write_access($pid,$u);$title=text_field($body['title']??'',160,'Approval title',true);$approverId=isset($body['approver_id'])?(int)$body['approver_id']:null;if($approverId!==null){$check=$pdo->prepare('SELECT 1 FROM users u LEFT JOIN project_members pm ON pm.user_id=u.id AND pm.project_id=? WHERE u.id=? AND u.is_active=1 AND (u.role=\'admin\' OR (pm.user_id IS NOT NULL AND pm.member_role IN (\'manager\',\'contributor\')))');$check->execute([$pid,$approverId]);if(!$check->fetchColumn())respond(422,['error'=>'Approver must be an active member of this project or an admin']);}$details=text_field($body['details']??'',5000,'Approval details');$s=$pdo->prepare('INSERT INTO approval_requests(project_id,requested_by,approver_id,title,details) VALUES(?,?,?,?,?)');$s->execute([$pid,$u['id'],$approverId,$title,$details]);$id=(int)$pdo->lastInsertId();log_activity($pid,null,(int)$u['id'],'approval_requested','Approval requested: '.$title);respond(201,['id'=>$id]);
+    $pid=(int)$m[1];$membership=project_access($pid,$u);if($u['role']!=='admin' && $membership!=='manager')respond(403,['error'=>'Only admins or project managers can create approval requests']);$title=text_field($body['title']??'',160,'Approval title',true);$approverId=isset($body['approver_id'])?(int)$body['approver_id']:null;if($approverId!==null){$check=$pdo->prepare('SELECT 1 FROM users u LEFT JOIN project_members pm ON pm.user_id=u.id AND pm.project_id=? WHERE u.id=? AND u.is_active=1 AND (u.role=\'admin\' OR (pm.user_id IS NOT NULL AND pm.member_role IN (\'manager\',\'contributor\')))');$check->execute([$pid,$approverId]);if(!$check->fetchColumn())respond(422,['error'=>'Approver must be an active member of this project or an admin']);}$details=text_field($body['details']??'',5000,'Approval details');$s=$pdo->prepare('INSERT INTO approval_requests(project_id,requested_by,approver_id,title,details) VALUES(?,?,?,?,?)');$s->execute([$pid,$u['id'],$approverId,$title,$details]);$id=(int)$pdo->lastInsertId();log_activity($pid,null,(int)$u['id'],'approval_requested','Approval requested: '.$title);respond(201,['id'=>$id]);
 }
 if (preg_match('#^/approvals/(\d+)$#',$route,$m) && $method==='PATCH') {
     $id=(int)$m[1];$s=$pdo->prepare('SELECT * FROM approval_requests WHERE id=?');$s->execute([$id]);$a=$s->fetch();if(!$a)respond(404,['error'=>'Approval not found']);project_write_access((int)$a['project_id'],$u);if($u['role']!=='admin' && (int)$a['approver_id']!==(int)$u['id'])respond(403,['error'=>'Only an admin or assigned approver can decide']);$status=(string)($body['status']??'');if(!in_array($status,['approved','rejected','cancelled'],true))respond(422,['error'=>'Invalid approval decision']);$pdo->prepare('UPDATE approval_requests SET status=?,decided_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$status,$id]);log_activity((int)$a['project_id'],null,(int)$u['id'],'approval_decided','Approval '.$status.': '.$a['title']);respond(200,['ok'=>true]);
