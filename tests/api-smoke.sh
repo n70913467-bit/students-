@@ -25,8 +25,12 @@ done
 
 health="$(curl -fsS "$BASE_URL/api/health")"
 echo "$health" | grep -q '"ok":true'
-curl -fsS "$BASE_URL/" -o "$TMP_DIR/index.html"
+curl -fsS -D "$TMP_DIR/frontend.headers" "$BASE_URL/" -o "$TMP_DIR/index.html"
 grep -q 'First Admin Setup' "$TMP_DIR/index.html"
+grep -qi '^X-Content-Type-Options: nosniff' "$TMP_DIR/frontend.headers"
+grep -qi '^X-Frame-Options: DENY' "$TMP_DIR/frontend.headers"
+grep -qi '^Referrer-Policy: same-origin' "$TMP_DIR/frontend.headers"
+grep -qi '^Content-Security-Policy:' "$TMP_DIR/frontend.headers"
 curl -fsS "$BASE_URL/app.js" -o "$TMP_DIR/app.js"
 grep -q 'createApiClient' "$TMP_DIR/app.js"
 storage_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/storage/dashboard.sqlite")"
