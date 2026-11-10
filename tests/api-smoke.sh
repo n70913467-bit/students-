@@ -147,6 +147,13 @@ contributor_edit_status="$(curl -sS -o "$TMP_DIR/contributor-edit.json" -w '%{ht
 test "$contributor_edit_status" = "403"
 curl -fsS -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -d '{"title":"Contributor task"}' "$BASE_URL/api/projects/$project_id/tasks" | grep -q '"id":'
 curl -fsS -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -d '{"message":"Contributor activity"}' "$BASE_URL/api/projects/$project_id/activities" | grep -q '"ok":true'
+contributor_membership_status="$(curl -sS -o "$TMP_DIR/contributor-membership.json" -w '%{http_code}' -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -d "$(php -r 'echo json_encode(["user_id"=>(int)$argv[1],"member_role"=>"viewer"]);' "$user_id")" "$BASE_URL/api/projects/$project_id/members")"
+test "$contributor_membership_status" = "403"
+contributor_approval_status="$(curl -sS -o "$TMP_DIR/contributor-approval.json" -w '%{http_code}' -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -d '{"title":"Forbidden approval"}' "$BASE_URL/api/projects/$project_id/approvals")"
+test "$contributor_approval_status" = "403"
+contributor_delete_status="$(curl -sS -o "$TMP_DIR/contributor-delete.json" -w '%{http_code}' -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -X DELETE "$BASE_URL/api/tasks/$task_id")"
+test "$contributor_delete_status" = "403"
+curl -fsS -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -X PATCH -d '{"status":"done"}' "$BASE_URL/api/tasks/$task_id" | grep -q '"ok":true'
 echo "stage: contributor permissions"
 
 # Admin can create a user and assign that user to a project.
@@ -193,7 +200,7 @@ curl -fsS -c "$TMP_DIR/manager-cookies" -H 'Content-Type: application/json' \
 manager_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/manager-login.json")"
 test -n "$manager_csrf"
 curl -fsS -b "$TMP_DIR/manager-cookies" "$BASE_URL/api/projects/$project_id/members" | grep -q 'manager@example.test'
-# Project managers may add contributors/viewers but cannot promote accounts to manager.
+# Only admins can assign project memberships.
 promotion_status="$(curl -sS -o "$TMP_DIR/manager-promotion.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' \
   -d "{\"user_id\":$manager_id,\"member_role\":\"manager\"}" "$BASE_URL/api/projects/$project_id/members")"
 test "$promotion_status" = "403"
