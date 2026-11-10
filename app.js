@@ -87,16 +87,14 @@ function render() {
   const visible = projects.filter((p) => (filter === 'All' || p.status === filter) &&
     [p.name, p.activity, p.next, ...p.tasks.map((task) => task.name)].join(' ').toLowerCase().includes(query));
   $('projectRows').innerHTML = visible.length ? visible.map((p) => {
-    const actions = canWrite(p)
-      ? `<button class="secondary" data-edit="${esc(p.id)}" aria-label="Edit project ${esc(p.name)}">Edit</button><button class="ghost" data-touch="${esc(p.id)}" aria-label="Log activity for ${esc(p.name)}">Log activity</button>${isAdmin() ? `<button class="danger" data-delete-project="${esc(p.id)}" aria-label="Delete project ${esc(p.name)}">Delete</button>` : ''}`
-      : '<span class="muted">Read only</span>';
+    const actions = `${canManageProject(p) ? `<button class="secondary" data-edit="${esc(p.id)}" aria-label="Edit project ${esc(p.name)}">Edit</button>` : ''}${canWrite(p) ? `<button class="ghost" data-touch="${esc(p.id)}" aria-label="Log activity for ${esc(p.name)}">Log activity</button>` : ''}${isAdmin() ? `<button class="danger" data-delete-project="${esc(p.id)}" aria-label="Delete project ${esc(p.name)}">Delete</button>` : ''}` || '<span class="muted">Read only</span>';
     const style = p.status === 'Running' ? 'running' : p.status === 'On Hold' ? 'hold' : p.status === 'Stopped' ? 'stopped' : 'planned';
     return `<tr><td><b>${esc(p.name)}</b><small>${esc(p.activity)}</small></td>
       <td><span class="pill ${style}">${esc(p.status)}</span></td><td>${fmt(p.lastActivity)}</td>
       <td>${esc(p.next)}</td><td>${esc(p.approval)}</td><td><div class="actions">${actions}</div></td></tr>`;
   }).join('') : '<tr><td colspan="6" class="empty">No matching projects.</td></tr>';
 
-  $('addProject').disabled = currentUser?.role === 'viewer';
+  $('addProject').disabled = !isAdmin();
   $('taskProject').innerHTML = projects.map((p) =>
     `<option value="${esc(p.id)}" ${p.id === selectedId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   const selected = projects.find((p) => p.id === selectedId);
