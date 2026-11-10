@@ -256,6 +256,7 @@ if ($method==='GET' && $route==='/projects') {
     $s=$pdo->prepare($sql);$s->execute($params);respond(200,['projects'=>$s->fetchAll()]);
 }
 if ($method==='POST' && $route==='/projects') {
+    if ($u['role'] !== 'admin') respond(403, ['error' => 'Only admins can create projects']);
     $name=text_field($body['name']??'',120,'Project name',true);$status=(string)($body['status']??'planned');
     if($name==='' || !in_array($status,['planned','running','on_hold','stopped'],true))respond(422,['error'=>'Valid project name and status are required']);
     $s=$pdo->prepare('INSERT INTO projects(name,description,status,owner_id,next_action) VALUES(?,?,?,?,?)');
@@ -264,10 +265,10 @@ if ($method==='POST' && $route==='/projects') {
     log_activity($id,null,(int)$u['id'],'project_created','Project created');respond(201,['id'=>$id]);
 }
 if (preg_match('#^/projects/(\d+)$#',$route,$m)) {
-    $id=(int)$m[1];project_access($id,$u);
+    $id=(int)$m[1];$membership=project_access($id,$u);
     if($method==='GET'){$s=$pdo->prepare('SELECT * FROM projects WHERE id=?');$s->execute([$id]);$p=$s->fetch();$t=$pdo->prepare('SELECT * FROM tasks WHERE project_id=? ORDER BY created_at DESC');$t->execute([$id]);$a=$pdo->prepare('SELECT * FROM activity_logs WHERE project_id=? ORDER BY created_at DESC LIMIT 100');$a->execute([$id]);respond(200,['project'=>$p,'tasks'=>$t->fetchAll(),'activity'=>$a->fetchAll(),'access'=>project_access($id,$u)]);}
     if($method==='PATCH'){
-        project_write_access($id,$u);$allowed=['name','description','status','next_action'];$sets=[];$vals=[];
+        if($u['role']!=='admin' && $membership!=='manager')respond(403,['error'=>'Only admins or project managers can edit project details']);$allowed=['name','description','status','next_action'];$sets=[];$vals=[];
         foreach($allowed as $k){
             if(!array_key_exists($k,$body))continue;
             $value=$body[$k];
