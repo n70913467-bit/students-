@@ -1,4 +1,5 @@
 import { createApiClient } from './api-client.js';
+import { toCsv } from './csv.js';
 
 const api = createApiClient('/api');
 const $ = (id) => document.getElementById(id);
@@ -278,7 +279,7 @@ $('approvalsList').addEventListener('click', async (event) => {
 $('exportCsv').addEventListener('click', () => {
   const rows = [['Project', 'Status', 'Last Activity', 'Activity', 'Next Action', 'Approval Needed'],
     ...projects.map((p) => [p.name, p.status, p.lastActivity, p.activity, p.next, p.approval])];
-  const csv = rows.map((row) => row.map((value) => '"' + String(value ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const csv = toCsv(rows);
   const link = document.createElement('a');
   link.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
   link.download = 'project-report.csv'; link.click(); URL.revokeObjectURL(link.href);
