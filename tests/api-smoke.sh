@@ -137,7 +137,7 @@ echo "stage: password size limit"
 contributor_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"name":"Test Contributor","email":"contributor@example.test","password":"contributor-password-123","role":"member"}' "$BASE_URL/api/users")"
 contributor_id="$(printf '%s' "$contributor_user" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
 test -n "$contributor_id"
-curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "{\\"user_id\\":$contributor_id,\\"member_role\\":\\"contributor\\"}" "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
+curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "$(php -r 'echo json_encode(["user_id"=>(int)$argv[1],"member_role"=>"contributor"]);' "$contributor_id")" "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
 curl -fsS -c "$TMP_DIR/contributor-cookies" -H 'Content-Type: application/json' -d '{"email":"contributor@example.test","password":"contributor-password-123"}' "$BASE_URL/api/auth/login" >"$TMP_DIR/contributor-login.json"
 contributor_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/contributor-login.json")"
 test -n "$contributor_csrf"
