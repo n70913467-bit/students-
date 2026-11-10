@@ -199,6 +199,9 @@ curl -fsS -c "$TMP_DIR/manager-cookies" -H 'Content-Type: application/json' \
   -d '{"email":"manager@example.test","password":"manager-password-123"}' "$BASE_URL/api/auth/login" >"$TMP_DIR/manager-login.json"
 manager_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/manager-login.json")"
 test -n "$manager_csrf"
+curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' -X PATCH -d '{"next_action":"Manager update"}' "$BASE_URL/api/projects/$project_id" | grep -q '"ok":true'
+manager_membership_status="$(curl -sS -o "$TMP_DIR/manager-membership.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' -d "$(php -r 'echo json_encode(["user_id"=>(int)$argv[1],"member_role"=>"viewer"]);' "$user_id")" "$BASE_URL/api/projects/$project_id/members")"
+test "$manager_membership_status" = "403"
 curl -fsS -b "$TMP_DIR/manager-cookies" "$BASE_URL/api/projects/$project_id/members" | grep -q 'manager@example.test'
 # Only admins can assign project memberships.
 promotion_status="$(curl -sS -o "$TMP_DIR/manager-promotion.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' \
