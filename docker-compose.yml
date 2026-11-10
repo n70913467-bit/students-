@@ -6,7 +6,7 @@ services:
     environment:
       PROJECT_DASHBOARD_DB: /var/lib/project-control/dashboard.sqlite
       PROJECT_DASHBOARD_COOKIE_SECURE: "1"
-      PROJECT_DASHBOARD_SETUP_KEY: ${PROJECT_DASHBOARD_SETUP_KEY:?Set PROJECT_DASHBOARD_SETUP_KEY in your environment}
+      PROJECT_DASHBOARD_SETUP_KEY: ${PROJECT_DASHBOARD_SETUP_KEY:-}
     volumes:
       - dashboard_data:/var/lib/project-control
     restart: unless-stopped
