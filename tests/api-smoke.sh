@@ -133,6 +133,22 @@ test "$long_password_status" = "422"
 grep -q 'Password is too long' "$TMP_DIR/long-password.json"
 echo "stage: password size limit"
 
+# Members with contributor access may work on tasks and activity but cannot create projects or edit project settings.
+contributor_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"name":"Test Contributor","email":"contributor@example.test","password":"contributor-password-123","role":"member"}' "$BASE_URL/api/users")"
+contributor_id="$(printf '%s' "$contributor_user" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$contributor_id"
+curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "{\\"user_id\\":$contributor_id,\\"member_role\\":\\"contributor\\"}" "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
+curl -fsS -c "$TMP_DIR/contributor-cookies" -H 'Content-Type: application/json' -d '{"email":"contributor@example.test","password":"contributor-password-123"}' "$BASE_URL/api/auth/login" >"$TMP_DIR/contributor-login.json"
+contributor_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/contributor-login.json")"
+test -n "$contributor_csrf"
+contributor_create_status="$(curl -sS -o "$TMP_DIR/contributor-create.json" -w '%{http_code}' -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -d '{"name":"Forbidden Project","status":"planned"}' "$BASE_URL/api/projects")"
+test "$contributor_create_status" = "403"
+contributor_edit_status="$(curl -sS -o "$TMP_DIR/contributor-edit.json" -w '%{http_code}' -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -X PATCH -d '{"name":"Forbidden Rename"}' "$BASE_URL/api/projects/$project_id")"
+test "$contributor_edit_status" = "403"
+curl -fsS -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -d '{"title":"Contributor task"}' "$BASE_URL/api/projects/$project_id/tasks" | grep -q '"id":'
+curl -fsS -b "$TMP_DIR/contributor-cookies" -H "X-CSRF-Token: $contributor_csrf" -H 'Content-Type: application/json' -d '{"message":"Contributor activity"}' "$BASE_URL/api/projects/$project_id/activities" | grep -q '"ok":true'
+echo "stage: contributor permissions"
+
 # Admin can create a user and assign that user to a project.
 new_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"name":"Test Viewer","email":"viewer@example.test","password":"viewer-password-123","role":"viewer"}' \
