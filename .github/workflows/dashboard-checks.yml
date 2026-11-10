@@ -39,7 +39,7 @@ jobs:
           grep -q "Export CSV" index.html
           grep -q "No payment features" index.html
           grep -q "RewriteEngine On" .htaccess
-          grep -q "RewriteRule \^storage" .htaccess
+          grep -q "RewriteRule \\^storage" .htaccess
           grep -q "Require all denied" storage/.htaccess
           ! grep -Eiq "paymentGateway|paymentForm|upiIntegration|cardProcessor" index.html
       - name: Set up PHP with SQLite
@@ -88,8 +88,14 @@ jobs:
             -v dashboard-smoke-data:/var/lib/project-control \
             project-control-dashboard:ci
           cleanup() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "Docker container logs for diagnosis:"
+              docker logs project-dashboard-smoke 2>&1 || true
+            fi
             docker rm -f project-dashboard-smoke >/dev/null 2>&1 || true
             docker volume rm dashboard-smoke-data >/dev/null 2>&1 || true
+            return "$status"
           }
           trap cleanup EXIT
           for attempt in $(seq 1 30); do
@@ -103,8 +109,9 @@ jobs:
           unauth_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8789/api/projects)"
           test "$unauth_status" = "401"
 
-          # Recreate the container with the same volume and confirm the admin record survived.
-          docker rm -f project-dashboard-smoke >/dev/null
+          # Stop gracefully so SQLite can finish writes before the volume is reused.
+          docker stop --time 10 project-dashboard-smoke >/dev/null
+          docker rm project-dashboard-smoke >/dev/null
           docker run -d --name project-dashboard-smoke -p 127.0.0.1:8789:80 \
             -e PROJECT_DASHBOARD_COOKIE_SECURE=0 \
             -e PROJECT_DASHBOARD_SETUP_KEY=ci-docker-setup-key-0123456789abcdef \
@@ -119,4 +126,5 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"name":"CI Admin","email":"ci-admin@example.test","password":"ci-password-12345","setup_key":"ci-docker-setup-key-0123456789abcdef"}' \
             http://127.0.0.1:8789/api/auth/register)"
-          test "$duplicate_status" = "409"
+          # The API closes first-admin registration with HTTP 403 once an account exists.
+          test "$duplicate_status" = "403"
