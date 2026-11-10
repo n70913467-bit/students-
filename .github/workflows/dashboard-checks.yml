@@ -80,6 +80,7 @@ jobs:
       - name: Validate Docker Compose configuration
         run: |
           PROJECT_DASHBOARD_SETUP_KEY=ci-compose-setup-key-0123456789abcdef docker compose config --quiet
+          env -u PROJECT_DASHBOARD_SETUP_KEY docker compose config --quiet
 
       - name: Build PHP Apache Docker image
         run: docker build --tag project-control-dashboard:ci .
