@@ -41,6 +41,8 @@ jobs:
           grep -q "Export CSV" index.html
           grep -q "No payment features" index.html
           grep -q "RewriteEngine On" .htaccess
+          grep -q "Header always set X-Frame-Options" .htaccess
+          grep -q "a2enmod rewrite headers" Dockerfile
           grep -q "RewriteRule \\^storage" .htaccess
           grep -q "Require all denied" storage/.htaccess
           ! grep -Eiq "paymentGateway|paymentForm|upiIntegration|cardProcessor" index.html
