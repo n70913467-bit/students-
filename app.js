@@ -175,9 +175,13 @@ $('registerForm').addEventListener('submit', async (event) => {
     });
     await startSession();
   } catch (error) {
-    $('authStatus').textContent = error.status === 403
-      ? 'Admin account pehle se bana hua hai. Login form ka use karein.'
-      : error.message;
+    if (error.status === 403 && /Registration is closed/i.test(error.message)) {
+      $('authStatus').textContent = 'Admin account pehle se bana hua hai. Login form ka use karein.';
+    } else if (error.status === 403) {
+      $('authStatus').textContent = 'Setup key galat hai. Administrator se sahi key lein.';
+    } else {
+      $('authStatus').textContent = error.message;
+    }
   } finally { setBusy(form, false); }
 });
 $('logoutButton').addEventListener('click', async () => {
