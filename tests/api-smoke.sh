@@ -35,6 +35,10 @@ curl -fsS "$BASE_URL/app.js" -o "$TMP_DIR/app.js"
 grep -q 'createApiClient' "$TMP_DIR/app.js"
 storage_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/storage/dashboard.sqlite")"
 test "$storage_status" = "404"
+for private_path in README.md docs/deployment.md tests/api-smoke.sh deployment/environment.example .gitignore .htaccess router.php; do
+  private_status="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/$private_path")"
+  test "$private_status" = "404"
+done
 unauth_status="$(curl -sS -o "$TMP_DIR/unauth.json" -w '%{http_code}' "$BASE_URL/api/projects")"
 test "$unauth_status" = "401"
 
