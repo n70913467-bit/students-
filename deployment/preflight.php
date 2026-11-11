@@ -31,6 +31,11 @@ $parentOk = $parentReal !== false && is_dir($parentReal) && is_writable($parentR
 result("Database directory", $parentOk, $parentOk ? "parent directory exists and is writable" : "create the database parent directory and grant write access to the PHP account");
 $failed = $failed || !$parentOk;
 
+$parentPermissions = $parentReal !== false ? fileperms($parentReal) : false;
+$privateDirectory = DIRECTORY_SEPARATOR !== "/" || ($parentPermissions !== false && ($parentPermissions & 0077) === 0);
+result("Database directory permissions", $privateDirectory, $privateDirectory ? "directory is private to its owner" : "restrict the database directory to owner-only permissions (0700)");
+$failed = $failed || !$privateDirectory;
+
 $outsidePublic = false;
 if ($parentOk && $publicReal !== false) {
     $candidate = is_file($dbPath) ? realpath($dbPath) : $parentReal . DIRECTORY_SEPARATOR . basename($dbPath);
