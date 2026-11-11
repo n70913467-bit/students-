@@ -29,7 +29,7 @@ const fmt = (value) => {
 const isAdmin = () => currentUser?.role === 'admin';
 const canWrite = (project) => Boolean(currentUser && currentUser.role !== 'viewer' &&
   (currentUser.role === 'admin' || project?.access !== 'viewer'));
-const canManageProject = (project) => Boolean(isAdmin() || project?.access === 'manager');
+const canManageProject = (project) => Boolean(currentUser && currentUser.role !== 'viewer' && (isAdmin() || project?.access === 'manager'));
 
 function showAuth(message = '') {
   $('authPanel').hidden = false;
