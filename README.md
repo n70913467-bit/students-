@@ -27,7 +27,7 @@ Run the authenticated app through PHP (do not open the HTML file directly): `php
 - Project-level viewer memberships are read-only; project write permissions are checked by the API. The API also supports user creation, project member assignment, activity notes, approval listing/decisions, and project/task deletion.
 - Run `bash tests/api-smoke.sh` after installing PHP with PDO_SQLite to exercise frontend routing, private storage blocking, first-admin registration, session lookup, project/task/activity CRUD, CSRF rejection, user creation, project memberships, approvals, logout, login throttling, and viewer restrictions.
 - Before production deployment, set `PROJECT_DASHBOARD_DB`, `PROJECT_DASHBOARD_PUBLIC_ROOT`, and `PROJECT_DASHBOARD_COOKIE_SECURE=1`, then run `php deployment/preflight.php`. The CLI preflight checks PHP/SQLite requirements, the private writable database path, and secure cookies; it does not deploy the app. Test it with `bash tests/preflight-smoke.sh`.
-- GitHub Actions runs PHP syntax validation and the API smoke test on pushes and pull requests.
+- GitHub Actions runs PHP syntax and SQLite schema validation, deployment preflight and API smoke tests, JavaScript syntax/client/frontend/CSV tests, Docker Compose validation, image build, and container smoke tests on pushes and pull requests.
 - `schema.sql` documents the relational model. The PHP API initializes the same core tables itself, including the login-attempt throttle table.
 
 ## Important security/deployment notes
@@ -36,7 +36,7 @@ This is an initial backend implementation, not production-ready. Before public d
 ## API client
 - `app.js` connects the login/register screen and dashboard CRUD actions to the same-origin API client.
 - `api-client.js` provides same-origin methods for authentication, projects, tasks, activity logs, users, project members, and approvals.
-- Run `npm test` with Node.js 18+ to run API client unit tests and frontend DOM/safe-rendering contract tests.
+- Run `npm test` with Node.js 18+ to run API client unit tests, frontend DOM/safe-rendering contract tests, and CSV formula-injection tests.
 
 ## Docker deployment
 
