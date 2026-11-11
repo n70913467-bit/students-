@@ -58,3 +58,10 @@ test('project creation and editing controls follow admin and manager roles', () 
   assert.match(app, /const canManageProject = \(project\) => Boolean\(isAdmin\(\) \|\| project\?\.access === 'manager'\);/);
   assert.match(app, /canManageProject\(p\).*data-edit/);
 });
+
+
+test('first-admin setup explains the required key and distinguishes closed registration', () => {
+  assert.match(html, /Setup key \(required; get it from the administrator\)/);
+  assert.match(app, /Registration is closed/i);
+  assert.match(app, /Setup key galat hai/);
+});
