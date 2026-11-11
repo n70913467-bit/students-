@@ -46,7 +46,7 @@ jobs:
           grep -Fq 'PROJECT_DASHBOARD_COOKIE_SECURE: ${PROJECT_DASHBOARD_COOKIE_SECURE:-0}' docker-compose.yml
           grep -q '127.0.0.1:8080:80' docker-compose.yml
           grep -q "RewriteRule \\^storage" .htaccess
-          grep -q "RewriteRule \\^(?:\\\\.git|\\\\.github|docs|tests|deployment)" .htaccess
+          grep -Fq 'RewriteRule ^(?:\.git|\.github|docs|tests|deployment)' .htaccess
           grep -q "blockedPath" router.php
           grep -q "Require all denied" storage/.htaccess
           ! grep -Eiq "paymentGateway|paymentForm|upiIntegration|cardProcessor" index.html
