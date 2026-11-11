@@ -4,6 +4,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 mkdir -p "$TMP_DIR/private-db"
+chmod 0700 "$TMP_DIR/private-db"
 export PROJECT_DASHBOARD_DB="$TMP_DIR/private-db/dashboard.sqlite"
 export PROJECT_DASHBOARD_PUBLIC_ROOT="$ROOT"
 export PROJECT_DASHBOARD_COOKIE_SECURE=1
@@ -25,6 +26,15 @@ if PROJECT_DASHBOARD_DB="$ROOT/dashboard-preflight-test.sqlite" php "$ROOT/deplo
   exit 1
 fi
 grep -q 'Database outside public root' "$TMP_DIR/public-db.log"
+
+# An overly broad database directory must be rejected.
+mkdir -p "$TMP_DIR/insecure-db"
+chmod 0755 "$TMP_DIR/insecure-db"
+if PROJECT_DASHBOARD_DB="$TMP_DIR/insecure-db/dashboard.sqlite" php "$ROOT/deployment/preflight.php" >"$TMP_DIR/insecure-dir.log" 2>&1; then
+  echo "Expected preflight to reject a database directory with group/other permissions" >&2
+  exit 1
+fi
+grep -q 'Database directory permissions' "$TMP_DIR/insecure-dir.log"
 
 # A configured setup key must be long enough; no secret is printed.
 if PROJECT_DASHBOARD_SETUP_KEY=short PROJECT_DASHBOARD_DB="$TMP_DIR/private-db/dashboard.sqlite" php "$ROOT/deployment/preflight.php" >"$TMP_DIR/short-key.log" 2>&1; then
