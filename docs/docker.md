@@ -17,12 +17,13 @@ export PROJECT_DASHBOARD_SETUP_KEY="$(php -r 'echo bin2hex(random_bytes(32));')"
 docker compose up --build -d
 ```
 
-Open `http://localhost:8080` for local development. Create the first administrator using the same setup key in the first-admin form. The SQLite database is stored in the named Docker volume `dashboard_data`, outside Apache's public document root, and persists across container restarts.
+Open `http://localhost:8080` for local development. Compose defaults `PROJECT_DASHBOARD_COOKIE_SECURE` to `0` for this plain-HTTP local setup. Create the first administrator using the same setup key in the first-admin form. The SQLite database is stored in the named Docker volume `dashboard_data`, outside Apache's public document root, and persists across container restarts.
 
 After the first admin is created, remove `PROJECT_DASHBOARD_SETUP_KEY` from the runtime environment and recreate/restart the service. Do not put the setup key in source control, screenshots, or chat messages.
 
 ## Public deployment
 
+- Set `PROJECT_DASHBOARD_COOKIE_SECURE=1` in the Compose environment before starting the public deployment.
 - Put the container behind a trusted HTTPS reverse proxy/load balancer.
 - Preserve the `X-Forwarded-Proto: https` information only from the trusted proxy, or configure HTTPS directly at the web server. The application must see the request as HTTPS for secure cookies and HSTS.
 - Keep the `dashboard_data` volume persistent and restrict access to the host.
@@ -31,4 +32,4 @@ After the first admin is created, remove `PROJECT_DASHBOARD_SETUP_KEY` from the 
 - Verify `GET /api/health`, authentication, CSRF rejection, role permissions, persistence after restart, CSV export, and direct denial of database/WAL paths.
 - Never expose the setup key or database volume publicly.
 
-The Compose file enables the Secure cookie flag. Plain HTTP is for local development only; a public deployment must use HTTPS. This container build does not provision a domain, TLS certificate, hosting account, backup service, or monitoring service and is not a production security certification.
+Compose defaults the Secure cookie flag off for local HTTP development; explicitly set it to `1` for a public HTTPS deployment. Plain HTTP is for local development only; a public deployment must use HTTPS. This container build does not provision a domain, TLS certificate, hosting account, backup service, or monitoring service and is not a production security certification.
