@@ -17,14 +17,14 @@ export PROJECT_DASHBOARD_SETUP_KEY="$(php -r 'echo bin2hex(random_bytes(32));')"
 docker compose up --build -d
 ```
 
-Open `http://localhost:8080` for local development. Compose defaults `PROJECT_DASHBOARD_COOKIE_SECURE` to `0` for this plain-HTTP local setup. Create the first administrator using the same setup key in the first-admin form. The SQLite database is stored in the named Docker volume `dashboard_data`, outside Apache's public document root, and persists across container restarts.
+Open `http://localhost:8080` for local development. Compose binds the port to loopback (`127.0.0.1`) so the plain-HTTP development service is not exposed directly to the LAN. Compose defaults `PROJECT_DASHBOARD_COOKIE_SECURE` to `0` for this plain-HTTP local setup. Create the first administrator using the same setup key in the first-admin form. The SQLite database is stored in the named Docker volume `dashboard_data`, outside Apache's public document root, and persists across container restarts.
 
 After the first admin is created, remove `PROJECT_DASHBOARD_SETUP_KEY` from the runtime environment and recreate/restart the service. Do not put the setup key in source control, screenshots, or chat messages.
 
 ## Public deployment
 
 - Set `PROJECT_DASHBOARD_COOKIE_SECURE=1` in the Compose environment before starting the public deployment.
-- Put the container behind a trusted HTTPS reverse proxy/load balancer.
+- Put the container behind a trusted HTTPS reverse proxy/load balancer on the same host (or attach it to a private container network); the published port is loopback-only by default.
 - Set `PROJECT_DASHBOARD_COOKIE_SECURE=1` in the Compose environment; this explicitly enables Secure session cookies and HSTS when TLS terminates at the trusted proxy, even if the proxy-to-container hop uses HTTP. Trust forwarded headers only from the known proxy; never let public clients supply them directly.
 - Keep the `dashboard_data` volume persistent and restrict access to the host.
 - Configure host-level backups of the SQLite database using a SQLite-aware online backup procedure; test restoration.
