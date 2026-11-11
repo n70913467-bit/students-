@@ -31,7 +31,7 @@ php deployment/preflight.php
 
 - Create the database parent directory first and grant write access to the PHP service account.
 - Set `PROJECT_DASHBOARD_PUBLIC_ROOT` to the actual public document root when running the CLI check; if omitted, the script uses the web server document root or the repository root.
-- The check verifies PHP 8.1+, PDO_SQLite, an absolute writable database path outside the public root, and secure session-cookie configuration.
+- Run the preflight as the same Unix account used by PHP-FPM/web server. The check verifies PHP 8.1+, PDO_SQLite, an absolute writable database path outside the public root, owner-only database-directory permissions, and secure session-cookie configuration.
 - A setup key is optional after first-admin bootstrap. If supplied, it must contain at least 32 characters; the script never prints the secret.
 - The preflight does not create a database, change server configuration, deploy the application, or certify production security.
 - Run `bash tests/preflight-smoke.sh` to test both passing and failing configuration cases locally.
