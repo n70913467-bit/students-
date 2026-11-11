@@ -58,7 +58,8 @@ php deployment/preflight.php
 - Unauthenticated `GET /api/projects` returns HTTP 401.
 - Login succeeds; the cookie is Secure, HttpOnly and SameSite=Strict.
 - Writes without a valid CSRF token return HTTP 419.
-- Viewer accounts cannot write.
+- Viewer accounts cannot write; contributors can create/update tasks and add activity, while only admins/project managers can edit project details, delete tasks, or create approvals. Only admins create projects and assign members.
+- Task due dates reject invalid calendar dates; CSV exports neutralize spreadsheet formula prefixes.
 - A user cannot read a project unless they are an admin or a member.
 - Database files and SQLite journal files cannot be downloaded over HTTP.
 - Create a test project, task, activity and approval; refresh and confirm persistence.
