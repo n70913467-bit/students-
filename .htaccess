@@ -12,6 +12,10 @@ Options -Indexes
   RewriteEngine On
   # Private application storage must never be served as static files.
   RewriteRule ^storage(?:/|$) - [F,NC,L]
+  # Do not expose source-control metadata, tests, deployment templates or docs.
+  RewriteRule ^(?:\\.git|\\.github|docs|tests|deployment)(?:/|$) - [F,NC,L]
+  RewriteRule ^(?:README\\.md|schema\\.sql|Dockerfile|docker-compose\\.yml|package\\.json|router\\.php)$ - [F,NC,L]
+  RewriteRule (^|/)\\.(?!well-known(?:/|$)) - [F,NC,L]
   RewriteRule ^api/?$ api.php?route=health [QSA,L]
   RewriteRule ^api/(.*)$ api.php?route=$1 [QSA,L]
 </IfModule>
