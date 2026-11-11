@@ -25,7 +25,7 @@ After the first admin is created, remove `PROJECT_DASHBOARD_SETUP_KEY` from the 
 
 - Set `PROJECT_DASHBOARD_COOKIE_SECURE=1` in the Compose environment before starting the public deployment.
 - Put the container behind a trusted HTTPS reverse proxy/load balancer.
-- Preserve the `X-Forwarded-Proto: https` information only from the trusted proxy, or configure HTTPS directly at the web server. The application must see the request as HTTPS for secure cookies and HSTS.
+- Set `PROJECT_DASHBOARD_COOKIE_SECURE=1` in the Compose environment; this explicitly enables Secure session cookies and HSTS when TLS terminates at the trusted proxy, even if the proxy-to-container hop uses HTTP. Trust forwarded headers only from the known proxy; never let public clients supply them directly.
 - Keep the `dashboard_data` volume persistent and restrict access to the host.
 - Configure host-level backups of the SQLite database using a SQLite-aware online backup procedure; test restoration.
 - Configure monitoring, edge rate limiting, log retention, and patching for the host and container.
