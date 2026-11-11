@@ -62,6 +62,7 @@ function db(): PDO {
     if (!is_dir($dir) && !mkdir($dir, 0700, true) && !is_dir($dir)) {
         respond(500, ['error' => 'Could not create database directory']);
     }
+    if (DIRECTORY_SEPARATOR === '/') @chmod($dir, 0700);
     $pdo = new PDO('sqlite:' . $path, null, null, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
