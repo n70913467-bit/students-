@@ -204,6 +204,15 @@ curl -fsS -c "$TMP_DIR/manager-cookies" -H 'Content-Type: application/json' \
   -d '{"email":"manager@example.test","password":"manager-password-123"}' "$BASE_URL/api/auth/login" >"$TMP_DIR/manager-login.json"
 manager_csrf="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["csrf_token"] ?? "";' "$TMP_DIR/manager-login.json")"
 test -n "$manager_csrf"
+manager_project_status="$(curl -sS -o "$TMP_DIR/manager-project.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' -d '{"name":"Manager Cannot Create","status":"planned"}' "$BASE_URL/api/projects")"
+test "$manager_project_status" = "403"
+manager_task="$(curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' -d '{"title":"Manager task"}' "$BASE_URL/api/projects/$project_id/tasks")"
+manager_task_id="$(printf '%s' "$manager_task" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$manager_task_id"
+manager_approval="$(curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' -d '{"title":"Manager approval"}' "$BASE_URL/api/projects/$project_id/approvals")"
+manager_approval_id="$(printf '%s' "$manager_approval" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
+test -n "$manager_approval_id"
+curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -X DELETE "$BASE_URL/api/tasks/$manager_task_id" | grep -q '"ok":true'
 curl -fsS -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' -X PATCH -d '{"next_action":"Manager update"}' "$BASE_URL/api/projects/$project_id" | grep -q '"ok":true'
 manager_membership_status="$(curl -sS -o "$TMP_DIR/manager-membership.json" -w '%{http_code}' -b "$TMP_DIR/manager-cookies" -H "X-CSRF-Token: $manager_csrf" -H 'Content-Type: application/json' -d "$(php -r 'echo json_encode(["user_id"=>(int)$argv[1],"member_role"=>"viewer"]);' "$user_id")" "$BASE_URL/api/projects/$project_id/members")"
 test "$manager_membership_status" = "403"
