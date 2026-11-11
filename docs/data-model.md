@@ -44,7 +44,7 @@ The API creates indexes for project status/update time, membership lookup by use
 - Login regenerates the session ID. State-changing requests require a per-session CSRF token in `X-CSRF-Token`.
 - Failed login attempts are counted by a SHA-256 hash of normalized email plus remote IP; the current threshold is 10 attempts per 15 minutes.
 - API responses set no-store, nosniff, frame/referrer/permissions and Content-Security-Policy headers.
-- Project membership and viewer write restrictions are checked server-side.
+- Project membership is checked server-side. Only admins can create projects and assign members; admins and project managers can edit project details, delete tasks, and create approval requests; contributors can create/update tasks and add activity; viewers are read-only.
 
 ## Operational notes and known limits
 
