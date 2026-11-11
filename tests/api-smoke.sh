@@ -178,6 +178,8 @@ echo "stage: admin user creation and password hashing"
 curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d "{\"user_id\":$user_id,\"member_role\":\"viewer\"}" \
   "$BASE_URL/api/projects/$project_id/members" | grep -q '"ok":true'
+viewer_contributor_status="$(curl -sS -o "$TMP_DIR/viewer-contributor.json" -w '%{http_code}' -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "$(php -r 'echo json_encode(["user_id"=>(int)$argv[1],"member_role"=>"contributor"]);' "$user_id")" "$BASE_URL/api/projects/$project_id/members")"
+test "$viewer_contributor_status" = "422"
 manager_user="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"name":"Test Manager","email":"manager@example.test","password":"manager-password-123","role":"member"}' "$BASE_URL/api/users")"
 manager_id="$(printf '%s' "$manager_user" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["id"] ?? "";')"
@@ -190,6 +192,8 @@ curl -fsS -b "$TMP_DIR/cookies" "$BASE_URL/api/projects/$project_id/members" | g
 invalid_approver="$(curl -sS -o "$TMP_DIR/invalid-approver.json" -w '%{http_code}' -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"title":"Invalid approver","approver_id":999999}' "$BASE_URL/api/projects/$project_id/approvals")"
 test "$invalid_approver" = "422"
+viewer_approver_status="$(curl -sS -o "$TMP_DIR/viewer-approver.json" -w '%{http_code}' -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "$(php -r 'echo json_encode(["title"=>"Viewer cannot approve","approver_id"=>(int)$argv[1]]);' "$user_id")" "$BASE_URL/api/projects/$project_id/approvals")"
+test "$viewer_approver_status" = "422"
 approval="$(curl -fsS -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
   -d '{"title":"Smoke approval","details":"Check approval list route"}' \
   "$BASE_URL/api/projects/$project_id/approvals")"
