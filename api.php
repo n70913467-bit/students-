@@ -47,6 +47,10 @@ function optional_date_field(mixed $value, string $label): ?string {
 function password_field(mixed $value): string {
     if (!is_string($value)) respond(422, ['error' => 'Password must be text']);
     if (strlen($value) > 1024) respond(422, ['error' => 'Password is too long (maximum 1024 bytes)']);
+    // bcrypt silently truncates after 72 bytes; reject longer inputs when it is the fallback.
+    if (password_algorithm() === PASSWORD_BCRYPT && strlen($value) > 72) {
+        respond(422, ['error' => 'Password is too long for the configured password algorithm (maximum 72 bytes)']);
+    }
     return $value;
 }
 function db(): PDO {
