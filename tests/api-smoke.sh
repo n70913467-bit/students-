@@ -131,6 +131,11 @@ long_password_status="$(curl -sS -o "$TMP_DIR/long-password.json" -w '%{http_cod
   -d "$(php -r 'echo json_encode(["name"=>"Long Password User","email"=>"long-password@example.test","password"=>str_repeat("x",1025),"role"=>"viewer"]);')" "$BASE_URL/api/users")"
 test "$long_password_status" = "422"
 grep -q 'Password is too long' "$TMP_DIR/long-password.json"
+if php -r 'exit(in_array("argon2id", password_algos(), true) ? 1 : 0);'; then
+  bcrypt_length_status="$(curl -sS -o "$TMP_DIR/bcrypt-length.json" -w '%{http_code}' -b "$TMP_DIR/cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "$(php -r 'echo json_encode(["name"=>"Long Bcrypt User","email"=>"long-bcrypt@example.test","password"=>str_repeat("x",73),"role"=>"member"]);')" "$BASE_URL/api/users")"
+  test "$bcrypt_length_status" = "422"
+  grep -q 'maximum 72 bytes' "$TMP_DIR/bcrypt-length.json"
+fi
 echo "stage: password size limit"
 
 # Members with contributor access may work on tasks and activity but cannot create projects or edit project settings.
