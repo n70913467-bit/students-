@@ -11,13 +11,13 @@ if not defined PHP_EXE (
 if not defined PHP_EXE (
   echo ERROR: PHP was not found.
   echo Install XAMPP or add php.exe to your Windows PATH.
-  pause
+  if not defined CI pause
   exit /b 1
 )
 
 "%PHP_EXE%" -r "if (PHP_VERSION_ID < 80100) { fwrite(STDERR, 'ERROR: PHP 8.1 or newer is required.'.PHP_EOL); exit(1); } if (!extension_loaded('pdo_sqlite')) { fwrite(STDERR, 'ERROR: Enable pdo_sqlite in php.ini.'.PHP_EOL); exit(1); }"
 if errorlevel 1 (
-  pause
+  if not defined CI pause
   exit /b 1
 )
 
@@ -25,7 +25,7 @@ rem A fresh one-time setup key is generated for this local server process only.
 for /f "delims=" %%K in ('"%PHP_EXE%" -r "echo bin2hex(random_bytes(32));"') do set "PROJECT_DASHBOARD_SETUP_KEY=%%K"
 if not defined PROJECT_DASHBOARD_SETUP_KEY (
   echo ERROR: Could not generate the first-admin setup key.
-  pause
+  if not defined CI pause
   exit /b 1
 )
 
