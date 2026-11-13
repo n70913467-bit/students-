@@ -10,6 +10,7 @@ permissions:
 jobs:
   windows-local-startup:
     runs-on: windows-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
