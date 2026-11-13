@@ -79,4 +79,3 @@ test('Windows startup helper validates PHP and PDO_SQLite and creates a runtime-
   assert.match(script, /-S 127\.0\.0\.1:8000 router\.php/);
   assert.doesNotMatch(script, /setx\s+PROJECT_DASHBOARD_SETUP_KEY/i);
 });
-});
