@@ -178,7 +178,9 @@ $('registerForm').addEventListener('submit', async (event) => {
     if (error.status === 403 && /Registration is closed/i.test(error.message)) {
       $('authStatus').textContent = 'Admin account pehle se bana hua hai. Login form ka use karein.';
     } else if (error.status === 403) {
-      $('authStatus').textContent = 'Setup key galat hai. Administrator se sahi key lein.';
+      $('authStatus').textContent = 'Setup key galat hai. Local setup ke liye start-local.bat dobara chalakar terminal mein dikhayi gayi key use karein.';
+    } else if (error.status === 503 && /First-admin setup is not configured/i.test(error.message)) {
+      $('authStatus').textContent = 'First-admin setup configured nahi hai. Server band karein aur project folder se start-local.bat chalayein; terminal mein dikhayi gayi key yahan paste karein.';
     } else {
       $('authStatus').textContent = error.message;
     }
