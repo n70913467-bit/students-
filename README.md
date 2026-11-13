@@ -14,7 +14,9 @@ A responsive dashboard for tracking projects, tasks, activity history, approvals
 This project does **not** process, collect, or manage payments. No payment gateway, UPI, card, wallet, banking, merchant, or payment API integration is in scope.
 
 ## Frontend prototype
-Run the authenticated app through PHP (do not open the HTML file directly): `php -S 127.0.0.1:8000 router.php`, then visit `http://127.0.0.1:8000`. The router serves the frontend and same-origin `/api/*` endpoints. The UI now uses the PHP API and SQLite database; the first admin account is created from the setup form.
+Run the authenticated app through PHP (do not open the HTML file directly), then visit `http://127.0.0.1:8000`. The router serves the frontend and same-origin `/api/*` endpoints. The UI uses the PHP API and SQLite database; the first admin account is created from the setup form.
+
+**Windows + XAMPP quick start:** open the project folder in File Explorer and double-click `start-local.bat`. It checks PHP 8.1+ and PDO_SQLite, generates a temporary first-admin setup key, prints it in the same terminal, and starts the local server. Copy that key into the First Admin Setup form. Keep the terminal open while using the app. The key is generated at runtime and is not saved in the repository. If you prefer CMD, run `C:\\xampp\\php\\php.exe -S 127.0.0.1:8000 router.php` only after setting `PROJECT_DASHBOARD_SETUP_KEY` in that same CMD window.
 
 ## Backend API (development starter)
 - Requires PHP 8.1+ and the PDO_SQLite extension.
