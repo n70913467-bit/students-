@@ -61,8 +61,22 @@ test('project creation and editing controls follow admin and manager roles', () 
 
 
 test('first-admin setup explains the required key and distinguishes closed registration', () => {
-  assert.match(html, /Setup key \(required; get it from the administrator\)/);
+  assert.match(html, /Setup key \(required\)/);
+  assert.match(html, /Local Windows setup: start the server with start-local\.bat/);
   assert.match(html, /id="registerSetupKey"[^>]*required/);
   assert.match(app, /Registration is closed/i);
-  assert.match(app, /Setup key galat hai/);
+  assert.match(app, /start-local\.bat dobara chalakar terminal mein dikhayi gayi key/i);
+  assert.match(app, /First-admin setup configured nahi hai.*start-local\.bat/s);
+});
+
+test('Windows startup helper validates PHP and PDO_SQLite and creates a runtime-only setup key', async () => {
+  const script = await readFile(new URL('../start-local.bat', import.meta.url), 'utf8');
+  assert.match(script, /C:\\xampp\\php\\php\.exe/);
+  assert.match(script, /extension_loaded\('pdo_sqlite'\)/);
+  assert.match(script, /PHP_VERSION_ID < 80100/);
+  assert.match(script, /PROJECT_DASHBOARD_SETUP_KEY=%%K/);
+  assert.match(script, /bin2hex\(random_bytes\(32\)\)/);
+  assert.match(script, /-S 127\.0\.0\.1:8000 router\.php/);
+  assert.doesNotMatch(script, /setx\s+PROJECT_DASHBOARD_SETUP_KEY/i);
+});
 });
