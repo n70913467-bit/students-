@@ -50,7 +50,7 @@ jobs:
               for ($attempt = 0; $attempt -lt 10; $attempt++) {
                 if (Test-Path $stdout) {
                   $output = Get-Content -Raw $stdout
-                  if ($output -match 'First-admin setup key \\(copy this into the browser form\\):\\s*([a-f0-9]{64})') {
+                  if ($output -match 'First-admin setup key \(copy this into the browser form\):\s*([a-f0-9]{64})') {
                     $setupKey = $Matches[1]
                     break
                   }
