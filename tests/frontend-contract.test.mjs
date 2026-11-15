@@ -8,8 +8,8 @@ const [html, app] = await Promise.all([
 ]);
 
 test('every literal DOM selector used by the dashboard exists in index.html', () => {
-  const ids = new Set([...html.matchAll(/\\bid="([^"]+)"/g)].map((match) => match[1]));
-  const selectors = [...app.matchAll(/\\$\\('([^']+)'\\)/g)].map((match) => match[1]);
+  const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
+  const selectors = [...app.matchAll(/\$\('([^']+)'\)/g)].map((match) => match[1]);
   const missing = [...new Set(selectors)].filter((id) => !ids.has(id));
   assert.deepEqual(missing, [], `Missing HTML element IDs: ${missing.join(', ')}`);
 });
@@ -18,16 +18,16 @@ test('authentication and dashboard are served as a same-origin module app', () =
   for (const id of ['authPanel', 'loginForm', 'registerForm', 'dashboardMain', 'logoutButton']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
-  assert.match(html, /type="module" src="\\.\\/app\\.js"/);
-  assert.match(app, /createApiClient\\('\\/api'\\)/);
+  assert.match(html, /type="module" src="\.\/app\.js"/);
+  assert.match(app, /createApiClient\('\/api'\)/);
   assert.doesNotMatch(app, /localStorage|sessionStorage/);
 });
 
 test('dynamic dashboard text is escaped before insertion into HTML templates', () => {
-  assert.match(app, /const esc = \\(value\\) => String\\(value \\?\\? ''\\)\\.replace/);
-  assert.match(app, /\\$\\{esc\\(p\\.name\\)\\}/);
-  assert.match(app, /\\$\\{esc\\(item\\.title\\)\\}/);
-  assert.match(app, /\\$\\{esc\\(member\\.email\\)\\}/);
+  assert.match(app, /const esc = \(value\) => String\(value \?\? ''\)\.replace/);
+  assert.match(app, /\$\{esc\(p\.name\)\}/);
+  assert.match(app, /\$\{esc\(item\.title\)\}/);
+  assert.match(app, /\$\{esc\(member\.email\)\}/);
 });
 
 
@@ -47,36 +47,36 @@ test('dynamic actions and task controls have contextual accessible names', () =>
 });
 
 test('project managers can see their assigned project member list without admin-only user controls', () => {
-  assert.match(app, /\\$\\('teamPanel'\\)\\.hidden = !\\(isAdmin\\(\\) \\|\\| selected\\?\\.access === 'manager'\\);/);
-  assert.match(app, /\\$\\('userForm'\\)\\.hidden = !isAdmin\\(\\);/);
-  assert.match(app, /\\$\\('memberForm'\\)\\.hidden = !isAdmin\\(\\);/);
+  assert.match(app, /\$\('teamPanel'\)\.hidden = !\(isAdmin\(\) \|\| selected\?\.access === 'manager'\);/);
+  assert.match(app, /\$\('userForm'\)\.hidden = !isAdmin\(\);/);
+  assert.match(app, /\$\('memberForm'\)\.hidden = !isAdmin\(\);/);
 });
 
 
 test('project creation and editing controls follow admin and manager roles', () => {
-  assert.match(app, /\\$\\('addProject'\\)\\.disabled = !isAdmin\\(\\);/);
-  assert.match(app, /const canManageProject = \\(project\\) => Boolean\\(currentUser && currentUser\\.role !== 'viewer' && \\(isAdmin\\(\\) \\|\\| project\\?\\.access === 'manager'\\)\\);/);
-  assert.match(app, /canManageProject\\(p\\).*data-edit/);
+  assert.match(app, /\$\('addProject'\)\.disabled = !isAdmin\(\);/);
+  assert.match(app, /const canManageProject = \(project\) => Boolean\(currentUser && currentUser\.role !== 'viewer' && \(isAdmin\(\) \|\| project\?\.access === 'manager'\)\);/);
+  assert.match(app, /canManageProject\(p\).*data-edit/);
 });
 
 
 test('first-admin setup explains the required key and distinguishes closed registration', () => {
-  assert.match(html, /Setup key \\(required\\)/);
-  assert.match(html, /Local Windows setup: start the server with start-local\\.bat/);
+  assert.match(html, /Setup key \(required\)/);
+  assert.match(html, /Local Windows setup: start the server with start-local\.bat/);
   assert.match(html, /id="registerSetupKey"[^>]*required/);
   assert.match(app, /Registration is closed/i);
-  assert.match(app, /start-local\\.bat dobara chalakar terminal mein dikhayi gayi key/i);
-  assert.match(app, /First-admin setup configured nahi hai.*start-local\\.bat/s);
+  assert.match(app, /start-local\.bat dobara chalakar terminal mein dikhayi gayi key/i);
+  assert.match(app, /First-admin setup configured nahi hai.*start-local\.bat/s);
 });
 
 test('Windows startup helper validates PHP and PDO_SQLite and creates a runtime-only setup key', async () => {
   const script = await readFile(new URL('../start-local.bat', import.meta.url), 'utf8');
-  assert.match(script, /C:\\\\xampp\\\\php\\\\php\\.exe/);
-  assert.match(script, /extension_loaded\\('pdo_sqlite'\\)/);
+  assert.match(script, /C:\\xampp\\php\\php\.exe/);
+  assert.match(script, /extension_loaded\('pdo_sqlite'\)/);
   assert.match(script, /PHP_VERSION_ID < 80100/);
   assert.match(script, /SETUP_KEY_FILE=%TEMP%/);
-  assert.match(script, /set \\/p "PROJECT_DASHBOARD_SETUP_KEY=/);
-  assert.match(script, /bin2hex\\(random_bytes\\(32)\\)/);
-  assert.match(script, /-S 127\\.0\\.0\\.1:8000 router\\.php/);
-  assert.doesNotMatch(script, /setx\\s+PROJECT_DASHBOARD_SETUP_KEY/i);
+  assert.match(script, /set \/p "PROJECT_DASHBOARD_SETUP_KEY=/);
+  assert.match(script, /bin2hex\(random_bytes\(32)\)/);
+  assert.match(script, /-S 127\.0\.0\.1:8000 router\.php/);
+  assert.doesNotMatch(script, /setx\s+PROJECT_DASHBOARD_SETUP_KEY/i);
 });
