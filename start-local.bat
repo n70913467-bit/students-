@@ -21,8 +21,18 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem A fresh one-time setup key is generated for this local server process only.
-for /f "delims=" %%K in ('"%PHP_EXE%" -r "echo bin2hex(random_bytes(32));"') do set "PROJECT_DASHBOARD_SETUP_KEY=%%K"
+rem Generate the setup key through a temporary file. This avoids cmd.exe's
+rem nested-quote parsing bug when PHP_EXE contains a quoted path.
+set "SETUP_KEY_FILE=%TEMP%\project-dashboard-setup-key-%RANDOM%-%RANDOM%.txt"
+"%PHP_EXE%" -r "echo bin2hex(random_bytes(32));" > "%SETUP_KEY_FILE%"
+if errorlevel 1 (
+  del "%SETUP_KEY_FILE%" >nul 2>&1
+  echo ERROR: Could not generate the first-admin setup key.
+  if not defined CI pause
+  exit /b 1
+)
+set /p "PROJECT_DASHBOARD_SETUP_KEY="<"%SETUP_KEY_FILE%"
+del "%SETUP_KEY_FILE%" >nul 2>&1
 if not defined PROJECT_DASHBOARD_SETUP_KEY (
   echo ERROR: Could not generate the first-admin setup key.
   if not defined CI pause
