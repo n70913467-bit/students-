@@ -46,7 +46,23 @@ jobs:
               if (Test-Path $stdout) { Get-Content $stdout }
               throw 'start-local.bat did not start the API health endpoint'
             }
-            if (-not $setupKey) { throw 'start-local.bat did not print a 64-character setup key' }
+            if (-not $setupKey) {
+              for ($attempt = 0; $attempt -lt 10; $attempt++) {
+                if (Test-Path $stdout) {
+                  $output = Get-Content -Raw $stdout
+                  if ($output -match 'First-admin setup key \\(copy this into the browser form\\):\\s*([a-f0-9]{64})') {
+                    $setupKey = $Matches[1]
+                    break
+                  }
+                }
+                Start-Sleep -Milliseconds 250
+              }
+            }
+            if (-not $setupKey) {
+              if (Test-Path $stderr) { Get-Content $stderr }
+              if (Test-Path $stdout) { Get-Content $stdout }
+              throw 'start-local.bat did not print a 64-character setup key'
+            }
             $payload = @{
               name = 'Windows CI Admin'
               email = 'windows-ci-admin@example.test'
