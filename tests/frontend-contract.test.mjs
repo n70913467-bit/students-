@@ -76,7 +76,7 @@ test('Windows startup helper validates PHP and PDO_SQLite and creates a runtime-
   assert.match(script, /PHP_VERSION_ID < 80100/);
   assert.match(script, /SETUP_KEY_FILE=%TEMP%/);
   assert.match(script, /set \/p "PROJECT_DASHBOARD_SETUP_KEY=/);
-  assert.match(script, /bin2hex\(random_bytes\(32)\)/);
+  assert.match(script, /bin2hex\(random_bytes\(32\)\)/);
   assert.match(script, /-S 127\.0\.0\.1:8000 router\.php/);
   assert.doesNotMatch(script, /setx\s+PROJECT_DASHBOARD_SETUP_KEY/i);
 });
