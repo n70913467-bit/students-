@@ -9,3 +9,15 @@ export PROJECT_DASHBOARD_DB="/var/lib/project-control/dashboard.sqlite"
 export PROJECT_DASHBOARD_COOKIE_SECURE="1"
 
 export PROJECT_DASHBOARD_SETUP_KEY="REPLACE_WITH_A_LONG_RANDOM_SECRET"
+
+# Optional XAMPP/MySQL mode: set a MySQL PDO DSN to enable it.
+# If this is empty/unset, the app keeps using SQLite from PROJECT_DASHBOARD_DB.
+# Create the database first in phpMyAdmin; the API creates the application tables.
+# Windows CMD example:
+# set PROJECT_DASHBOARD_DB_DSN=mysql:host=127.0.0.1;port=3306;dbname=project_control;charset=utf8mb4
+# set PROJECT_DASHBOARD_DB_USER=dashboard_app
+# set PROJECT_DASHBOARD_DB_PASSWORD=REPLACE_WITH_A_STRONG_PASSWORD
+# Linux/macOS shell example:
+# export PROJECT_DASHBOARD_DB_DSN="mysql:host=127.0.0.1;port=3306;dbname=project_control;charset=utf8mb4"
+# export PROJECT_DASHBOARD_DB_USER="dashboard_app"
+# export PROJECT_DASHBOARD_DB_PASSWORD="REPLACE_WITH_A_STRONG_PASSWORD"
