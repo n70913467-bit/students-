@@ -15,7 +15,7 @@ if not defined PHP_EXE (
   exit /b 1
 )
 
-"%PHP_EXE%" -r "if (PHP_VERSION_ID < 80100) { fwrite(STDERR, 'ERROR: PHP 8.1 or newer is required.'.PHP_EOL); exit(1); } if (!extension_loaded('pdo_sqlite')) { fwrite(STDERR, 'ERROR: Enable pdo_sqlite in php.ini.'.PHP_EOL); exit(1); }"
+"%PHP_EXE%" -r "if (PHP_VERSION_ID < 80100) { fwrite(STDERR, 'ERROR: PHP 8.1 or newer is required.'.PHP_EOL); exit(1); } $mysql = getenv('PROJECT_DASHBOARD_DB_DSN'); $ext = $mysql ? 'pdo_mysql' : 'pdo_sqlite'; if (!extension_loaded($ext)) { fwrite(STDERR, 'ERROR: Enable '.$ext.' in the XAMPP php.ini.'.PHP_EOL); exit(1); }"
 if errorlevel 1 (
   if not defined CI pause
   exit /b 1
