@@ -69,10 +69,12 @@ test('first-admin setup explains the required key and distinguishes closed regis
   assert.match(app, /First-admin setup configured nahi hai.*start-local\.bat/s);
 });
 
-test('Windows startup helper validates PHP and PDO_SQLite and creates a runtime-only setup key', async () => {
+test('Windows startup helper validates the selected PDO driver and creates a runtime-only setup key', async () => {
   const script = await readFile(new URL('../start-local.bat', import.meta.url), 'utf8');
   assert.match(script, /C:\\xampp\\php\\php\.exe/);
-  assert.match(script, /extension_loaded\('pdo_sqlite'\)/);
+  assert.match(script, /pdo_sqlite/);
+  assert.match(script, /pdo_mysql/);
+  assert.match(script, /extension_loaded\(\$ext\)/);
   assert.match(script, /PHP_VERSION_ID < 80100/);
   assert.match(script, /SETUP_KEY_FILE=%TEMP%/);
   assert.match(script, /set \/p "PROJECT_DASHBOARD_SETUP_KEY=/);
