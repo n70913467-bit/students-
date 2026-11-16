@@ -52,3 +52,8 @@ The API creates indexes for project status/update time, membership lookup by use
 - The login throttle is a basic application-level control, not a replacement for edge/WAF throttling.
 - No password-reset, email verification, MFA, account self-service, refresh-token, or JWT flow exists.
 - Before public deployment, configure HTTPS, restrict file permissions, run independent security/accessibility review, and test backup/restore.
+
+
+## Optional XAMPP MySQL backend
+
+SQLite remains the default. To use XAMPP MySQL, create an empty database (for example, `project_control`) in phpMyAdmin, enable PHP's `pdo_mysql` extension, and set `PROJECT_DASHBOARD_DB_DSN`, `PROJECT_DASHBOARD_DB_USER`, and `PROJECT_DASHBOARD_DB_PASSWORD` in the PHP server process environment. The DSN format is `mysql:host=127.0.0.1;port=3306;dbname=project_control;charset=utf8mb4`. On the first API request, the API creates the seven application tables and their indexes/foreign keys. Do not set the SQLite `PROJECT_DASHBOARD_DB` path as a substitute for the MySQL DSN. Existing SQLite data is not migrated automatically; export/import or a dedicated migration is required before switching a populated installation.
