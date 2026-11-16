@@ -19,7 +19,7 @@ if (str_starts_with($path, '/storage/')) {
 
 // Repository documentation, tests, deployment templates and dotfiles are not public assets.
 $blockedPath = preg_match('#^/(?:\.git|\.github|docs|tests|deployment)(?:/|$)#i', $path) === 1
-    || preg_match('#^/(?:README\.md|schema\.sql|Dockerfile|docker-compose\.yml|package\.json|router\.php|\.dockerignore|\.gitignore|\.htaccess|\.env(?:\..*)?)$#i', $path) === 1
+    || preg_match('#^/(?:README\.md|schema\.sql|schema\.mysql\.sql|Dockerfile|docker-compose\.yml|package\.json|router\.php|\.dockerignore|\.gitignore|\.htaccess|\.env(?:\..*)?)$#i', $path) === 1
     || preg_match('#^/\.(?!well-known(?:/|$))#i', $path) === 1;
 if ($blockedPath) {
     http_response_code(404);
