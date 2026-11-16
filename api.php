@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Project Control Dashboard API
- * PHP 8.1+ with PDO_SQLite. Same-origin session authentication.
+ * PHP 8.1+ with PDO_SQLite (default) or PDO_MySQL (optional). Same-origin session authentication.
  * No payment functionality is implemented or supported.
  */
 header('Content-Type: application/json; charset=utf-8');
@@ -53,9 +53,99 @@ function password_field(mixed $value): string {
     }
     return $value;
 }
+function initialize_mysql_schema(PDO $pdo): void {
+    $statements = [
+        "CREATE TABLE IF NOT EXISTS users (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(120) NOT NULL, email VARCHAR(254) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            role VARCHAR(16) NOT NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT chk_users_role CHECK (role IN ('admin','member','viewer'))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS projects (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(120) NOT NULL, description TEXT NOT NULL,
+            status VARCHAR(16) NOT NULL DEFAULT 'planned',
+            owner_id BIGINT UNSIGNED NULL, next_action TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_projects_status_updated(status,updated_at),
+            CONSTRAINT chk_projects_status CHECK (status IN ('planned','running','on_hold','stopped')),
+            CONSTRAINT fk_projects_owner FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS project_members (
+            project_id BIGINT UNSIGNED NOT NULL, user_id BIGINT UNSIGNED NOT NULL,
+            member_role VARCHAR(16) NOT NULL DEFAULT 'contributor',
+            PRIMARY KEY(project_id,user_id), INDEX idx_members_user_project(user_id,project_id),
+            CONSTRAINT chk_member_role CHECK (member_role IN ('manager','contributor','viewer')),
+            CONSTRAINT fk_members_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            CONSTRAINT fk_members_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS tasks (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            project_id BIGINT UNSIGNED NOT NULL, title VARCHAR(120) NOT NULL,
+            description TEXT NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'todo',
+            priority VARCHAR(16) NOT NULL DEFAULT 'medium',
+            assignee_id BIGINT UNSIGNED NULL, due_date DATE NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at DATETIME NULL, INDEX idx_tasks_project_status(project_id,status),
+            CONSTRAINT chk_task_status CHECK (status IN ('todo','in_progress','blocked','done')),
+            CONSTRAINT chk_task_priority CHECK (priority IN ('low','medium','high','urgent')),
+            CONSTRAINT fk_tasks_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            CONSTRAINT fk_tasks_assignee FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS activity_logs (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            project_id BIGINT UNSIGNED NOT NULL, task_id BIGINT UNSIGNED NULL,
+            actor_id BIGINT UNSIGNED NULL, event_type VARCHAR(64) NOT NULL,
+            message TEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_activity_project_created(project_id,created_at),
+            CONSTRAINT fk_activity_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            CONSTRAINT fk_activity_task FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL,
+            CONSTRAINT fk_activity_actor FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS approval_requests (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            project_id BIGINT UNSIGNED NOT NULL, requested_by BIGINT UNSIGNED NOT NULL,
+            approver_id BIGINT UNSIGNED NULL, title VARCHAR(180) NOT NULL,
+            details TEXT NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending',
+            requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, decided_at DATETIME NULL,
+            INDEX idx_approvals_project_status(project_id,status),
+            CONSTRAINT chk_approval_status CHECK (status IN ('pending','approved','rejected','cancelled')),
+            CONSTRAINT fk_approvals_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            CONSTRAINT fk_approvals_requester FOREIGN KEY(requested_by) REFERENCES users(id),
+            CONSTRAINT fk_approvals_approver FOREIGN KEY(approver_id) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS login_attempts (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            attempt_key CHAR(64) NOT NULL, attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_login_attempts_key_time(attempt_key,attempted_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    ];
+    foreach ($statements as $statement) $pdo->exec($statement);
+}
 function db(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
+    $dsn = getenv('PROJECT_DASHBOARD_DB_DSN');
+    if ($dsn !== false && $dsn !== '') {
+        if (!extension_loaded('pdo_mysql')) respond(500, ['error' => 'PDO_MySQL extension is required for the configured MySQL database']);
+        try {
+            $pdo = new PDO($dsn, getenv('PROJECT_DASHBOARD_DB_USER') ?: '', getenv('PROJECT_DASHBOARD_DB_PASSWORD') ?: '', [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]);
+            if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') respond(500, ['error' => 'PROJECT_DASHBOARD_DB_DSN must use the mysql: PDO driver']);
+            initialize_mysql_schema($pdo);
+            return $pdo;
+        } catch (Throwable $e) {
+            respond(500, ['error' => 'Could not connect to the configured MySQL database; check XAMPP MySQL, database name, and credentials']);
+        }
+    }
     if (!extension_loaded('pdo_sqlite')) respond(500, ['error' => 'PDO_SQLite extension is required']);
     $path = getenv('PROJECT_DASHBOARD_DB') ?: __DIR__ . '/storage/dashboard.sqlite';
     $dir = dirname($path);
@@ -202,22 +292,43 @@ if ($method === 'POST' && $route === '/auth/register') {
     }
     $name=text_field($body['name']??'',120,'Name',true);$email=strtolower(text_field($body['email']??'',254,'Email',true));$password=password_field($body['password']??'');
     if($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($password)<12) respond(422,['error'=>'First admin requires a name, valid email, and password of at least 12 characters']);
-    $pdo->exec('BEGIN IMMEDIATE');
-    if((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()>0){$pdo->exec('ROLLBACK');respond(403,['error'=>'Registration is closed; ask an admin to create an account']);}
+    $isMysql = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql';
+    if ($isMysql) {
+        $lock = (int)$pdo->query("SELECT GET_LOCK('project_dashboard_first_admin', 10)")->fetchColumn();
+        if ($lock !== 1) respond(503, ['error' => 'Could not lock first-admin setup; try again']);
+        $pdo->beginTransaction();
+    } else {
+        $pdo->exec('BEGIN IMMEDIATE');
+    }
+    if((int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()>0){
+        $pdo->exec('ROLLBACK');
+        if ($isMysql) $pdo->query("SELECT RELEASE_LOCK('project_dashboard_first_admin')");
+        respond(403,['error'=>'Registration is closed; ask an admin to create an account']);
+    }
     try{
         $s=$pdo->prepare("INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,'admin')");
         $s->execute([$name,$email,password_hash($password,password_algorithm())]);
-        $newUserId=(int)$pdo->lastInsertId();$pdo->exec('COMMIT');
-    }catch(Throwable $e){try{$pdo->exec('ROLLBACK');}catch(Throwable $ignored){}respond(409,['error'=>'Could not create admin account']);}
+        $newUserId=(int)$pdo->lastInsertId();
+        if ($isMysql) {
+            $pdo->commit();
+            $pdo->query("SELECT RELEASE_LOCK('project_dashboard_first_admin')");
+        } else {
+            $pdo->exec('COMMIT');
+        }
+    }catch(Throwable $e){
+        try { if ($pdo->inTransaction()) $pdo->rollBack(); else $pdo->exec('ROLLBACK'); } catch(Throwable $ignored) {}
+        if ($isMysql) { try { $pdo->query("SELECT RELEASE_LOCK('project_dashboard_first_admin')"); } catch(Throwable $ignored) {} }
+        respond(409,['error'=>'Could not create admin account']);
+    }
     session_regenerate_id(true);$_SESSION['user_id']=$newUserId;$_SESSION['csrf']=bin2hex(random_bytes(32));
     respond(201,['user'=>current_user(),'csrf_token'=>$_SESSION['csrf']]);
 }
 if ($method === 'POST' && $route === '/auth/login') {
     $email=strtolower(text_field($body['email']??'',254,'Email'));$password=password_field($body['password']??'');
     $attemptKey=login_attempt_key($email);
-    $pdo->prepare("DELETE FROM login_attempts WHERE attempted_at < datetime('now','-1 day')")->execute();
-    $rate=$pdo->prepare("SELECT COUNT(*) FROM login_attempts WHERE attempt_key=? AND attempted_at >= datetime('now','-15 minutes')");
-    $rate->execute([$attemptKey]);
+    $pdo->prepare('DELETE FROM login_attempts WHERE attempted_at < ?')->execute([date('Y-m-d H:i:s', time() - 86400)]);
+    $rate=$pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE attempt_key=? AND attempted_at >= ?');
+    $rate->execute([$attemptKey, date('Y-m-d H:i:s', time() - 900)]);
     if((int)$rate->fetchColumn()>=10)respond(429,['error'=>'Too many login attempts. Try again in 15 minutes']);
     $s=$pdo->prepare('SELECT * FROM users WHERE email=? AND is_active=1');$s->execute([$email]);$u=$s->fetch();
     if(!$u || !password_verify($password,$u['password_hash'])){
@@ -323,7 +434,10 @@ if (preg_match('#^/projects/(\d+)/members$#',$route,$m) && $method==='POST') {
     if($userId<1 || !in_array($memberRole,['manager','contributor','viewer'],true)) respond(422,['error'=>'Valid user_id and member_role are required']);
     $check=$pdo->prepare('SELECT role FROM users WHERE id=? AND is_active=1');$check->execute([$userId]);$accountRole=$check->fetchColumn();if($accountRole===false) respond(404,['error'=>'Active user not found']);
     if($accountRole==='viewer' && $memberRole!=='viewer')respond(422,['error'=>'Viewer accounts can only receive viewer project access']);
-    $pdo->prepare('INSERT INTO project_members(project_id,user_id,member_role) VALUES(?,?,?) ON CONFLICT(project_id,user_id) DO UPDATE SET member_role=excluded.member_role')->execute([$pid,$userId,$memberRole]);
+    $memberSql = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
+        ? 'INSERT INTO project_members(project_id,user_id,member_role) VALUES(?,?,?) ON DUPLICATE KEY UPDATE member_role=VALUES(member_role)'
+        : 'INSERT INTO project_members(project_id,user_id,member_role) VALUES(?,?,?) ON CONFLICT(project_id,user_id) DO UPDATE SET member_role=excluded.member_role';
+    $pdo->prepare($memberSql)->execute([$pid,$userId,$memberRole]);
     log_activity($pid,null,(int)$u['id'],'member_added','Project member added or updated');respond(201,['ok'=>true]);
 }
 if (preg_match('#^/projects/(\d+)/approvals$#',$route,$m) && $method==='GET') {
