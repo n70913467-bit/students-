@@ -281,7 +281,7 @@ $route = isset($_GET['route'])
 $body = in_array($method, ['POST','PATCH','PUT','DELETE'], true) ? input() : [];
 $pdo = db();
 
-if ($method === 'GET' && $route === '/health') respond(200, ['ok'=>true,'service'=>'project-control-api']);
+if ($method === 'GET' && $route === '/health') respond(200, ['ok'=>true,'service'=>'project-control-api','database'=>$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)]);
 if ($method === 'POST' && $route === '/auth/register') {
     $setupKey = getenv('PROJECT_DASHBOARD_SETUP_KEY');
     if ($setupKey === false || $setupKey === '') {
@@ -417,7 +417,7 @@ if (preg_match('#^/tasks/(\d+)$#',$route,$m) && $method==='PATCH') {
     $status=(string)($body['status']??$task['status']);if(!in_array($status,['todo','in_progress','blocked','done'],true))respond(422,['error'=>'Invalid task status']);
     $priority=(string)($body['priority']??$task['priority']);if(!in_array($priority,['low','medium','high','urgent'],true))respond(422,['error'=>'Invalid priority']);
     $title=text_field($body['title']??$task['title'],120,'Task title',true);
-    $s=$pdo->prepare('UPDATE tasks SET title=?,status=?,priority=?,completed_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');$s->execute([$title,$status,$priority,$status==='done'?date('c'):null,$id]);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_updated','Task updated: '.$title.' ('.$status.')');respond(200,['ok'=>true]);
+    $s=$pdo->prepare('UPDATE tasks SET title=?,status=?,priority=?,completed_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');$s->execute([$title,$status,$priority,$status==='done'?date('Y-m-d H:i:s'):null,$id]);log_activity((int)$task['project_id'],$id,(int)$u['id'],'task_updated','Task updated: '.$title.' ('.$status.')');respond(200,['ok'=>true]);
 }
 if ($method==='POST' && $route==='/users') {
     if ($u['role']!=='admin') respond(403,['error'=>'Only admins can create users']);
